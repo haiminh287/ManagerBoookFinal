@@ -1,0 +1,145 @@
+{% extends 'layout/base.html' %}
+{% block title %}Đặt hàng{% endblock %}
+{% block content %}
+
+
+    <div class="container my-5 grid " style="width:1000px">
+        <h1 class="text-center text-info mb-4">ĐẶT HÀNG</h1>
+
+        <form method="post" action="/orders" class="p-4 border rounded shadow bg-light fs-4" >
+            <!-- Customer Information -->
+            <div class="row mb-3">
+                <div class="col-md-6 mb-3">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="name" placeholder="Họ tên" name="name" />
+                        <label for="name">Họ tên</label>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="phone" placeholder="Số điện thoại" name="phone" />
+                        <label for="phone">Số điện thoại</label>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="form-floating">
+                        <input type="email" class="form-control" id="email" placeholder="Email" name="email" />
+                        <label for="email">Email</label>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="address" placeholder="Địa chỉ" name="address" />
+                        <label for="address">Địa chỉ</label>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Cart Items -->
+            {% if 'cart' in session and session.cart%}
+            <h4 class="text-primary mb-3">Sản phẩm của bạn</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover ">
+                    <thead class="table-dark fs-3">
+                        <tr>
+                            <th scope="col">Mã sản phẩm</th>
+                            <th scope="col">Sản phẩm</th>
+                            <th scope="col">Đơn giá</th>
+                            <th scope="col">Số lượng</th>
+                            <th scope="col">Thành Tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody class="fs-4">
+                        {% for c in session['cart'].values() %}
+                        {% if c.is_selected %}
+                        <tr style="height:60px;" id="books{{ c.id }}">
+                            <td class="align-middle">
+                                <p class="mb-0" style="font-weight: 500;">{{ c.id }}</p>
+                            </td>
+                            <td class="align-middle">
+                                <div class="d-flex align-items-center" >
+                                    <img src="{{ c.image }}" class="img-fluid rounded-3" style="width: 120px;height:100px;" alt="Book">
+                                    <div class="flex-column ms-4">
+                                        <p class="mb-2">{{ c.title }}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="align-middle">
+                                <p class="mb-0" style="font-weight: 500;">{{ "{:,.0f}".format(c.price).replace(",", ".") }} VNĐ</p>
+                            </td>
+                            <td class="align-middle">
+                                <div class="d-flex flex-row align-items-center">
+                                    <p class="fs-4 mb-0">{{c.quantity}}</p>
+                                </div>
+                            </td>
+                            <td class="align-middle">
+                                <p class="mb-0" style="font-weight: 500;">{{ "{:,.0f}".format(c.price * c.quantity).replace(",", ".") }} VNĐ</p>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <h4 class="text-primary mb-3">Phương Thức Thanh Toán</h4>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="payment-cash" name="payment_method" value="cash" >
+                <label class="form-check-label" for="payment-cash">Thanh Toán Khi Nhận Hàng</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="payment-card" name="payment_method" value="card" checked>
+                <label class="form-check-label" for="payment-card">Ví Momo</label>
+            </div>
+            <!-- Delivery Method -->
+            <h4 class="text-primary mt-4 mb-3">Phương Thức Nhận Hàng</h4>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="delivery-home" name="delivery_method" value="home" checked onclick="toggleDeliveryMethod()">
+                <label class="form-check-label" for="delivery-home">Giao hàng tận nơi</label>
+            </div>
+            <div id="delivery-address" class="form-floating mb-3">
+                <input type="text" class="form-control" id="address-receive" placeholder="Địa chỉ nhận" name="address-receive" />
+                <label for="address-receive">Địa Chỉ Nhận</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" id="delivery-store" name="delivery_method" value="store" onclick="toggleDeliveryMethod()">
+                <label class="form-check-label" for="delivery-store">Nhận tại cửa hàng</label>
+            </div>
+            <div id="store-location" class="mb-3 mt-3" style="display: none;">
+                <label for="store" class="form-label">Chọn địa điểm</label>
+                <select class="form-control" id="store" name="store">
+                    <option value="Thủ Đức">Thủ Đức</option>
+                    <option value="Bình Thạnh">Bình Thạnh</option>
+                </select>
+            </div>
+
+            <div class="text-center">
+                <button class="btn btn-danger btn-lg mt-3" type="submit">Đặt hàng</button>
+            </div>
+        </form>
+    </div>
+</div>
+    <script>
+        function toggleDeliveryMethod() {
+            const deliveryHome = document.getElementById('delivery-home');
+            const deliveryStore = document.getElementById('delivery-store');
+            const addressInput = document.getElementById('address-receive');
+            const storeLocation = document.getElementById('store-location');
+            const storeSelect = document.getElementById('store');
+            
+            if (deliveryHome.checked) {
+                addressInput.disabled = false;
+                storeSelect.disabled = true;
+                storeLocation.style.display = 'none';
+                addressInput.parentElement.style.display = 'block';
+            } else if (deliveryStore.checked) {
+                addressInput.disabled = true;
+                storeSelect.disabled = false;
+                storeLocation.style.display = 'block';
+                addressInput.parentElement.style.display = 'none';
+            }
+        }
+    </script>
+
+{% endblock%}
