@@ -1,5 +1,5 @@
 import json
-from models import CategoryBook,TakedBook,TakedBookDetail,Category, Book,Client,Order,InfoUserOrder,OrderDetail,Price,Review,CategoryBook,CancelOrder,Receipt,ReceiptDetails
+from models import CategoryBook,TakedBook,TakedBookDetail,Category, Book,Client,Order,InfoUserOrder,OrderDetail,Price,Review,CategoryBook,CancelOrder,Receipt,ReceiptDetail, CancelReasonState
 from config import login,db,app
 import hashlib
 from flask_login import current_user
@@ -401,7 +401,7 @@ def add_receipt(cart,is_pay):
         db.session.add(receipt)
         db.session.commit()
         for c in cart.values():
-            receipt_detail = ReceiptDetails(receipt_id=receipt.id, book_id=c.get('id'), quantity=c.get('quantity'), price=c.get('price'))
+            receipt_detail = ReceiptDetail(receipt_id=receipt.id, book_id=c.get('id'), quantity=c.get('quantity'), price=c.get('price'))
             db.session.add(receipt_detail)
         try:
             db.session.commit()
@@ -588,6 +588,26 @@ def book_sales_frequency(time='month', year=datetime.now().year, month=None):
     ).order_by(func.count(OrderDetail.id).desc()).all()
     
     return stats
+
+
+def confirm_cancel_order(cancel_order_id ,reason_state = CancelReasonState.CLIENTNOTPAYING):
+    cancel_order = CancelOrder.query.get(cancel_order_id)
+    cancel_order.order.state = StateOrder.CANCEL
+    cancel_order.reason_state = reason_state
+    
+    try:
+        db.session.commit()
+    except Exception as ex:
+        print(ex)
+        return {
+            'status': 301
+        }
+    else:
+        print('change')
+        return {
+            'status': 201
+        }
+
 
 if __name__ == '__main__':
     with app.app_context():

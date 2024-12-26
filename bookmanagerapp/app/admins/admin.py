@@ -4,14 +4,15 @@ from flask_admin import expose ,BaseView
 from flask_login import current_user
 from config import app,db,admin
 import dao
-from models import CancelOrder,Review,Category, Book,Price,TakedBookDetail,Order,OrderDetail
+from models import CancelOrder,Review,Category, Book,Price,TakedBookDetail,Order,OrderDetail,Client
 import utils
 
-class AuthenticatedView(ModelView):
+class AdminAuthenticatedView(ModelView):
     pass
     # def is_accessible(self):
     #     return current_user.is_authenticated
-class BaseModelView(AuthenticatedView):
+
+class BaseModelView(AdminAuthenticatedView):
     # column_display_pk = False
     can_create = True
     can_edit = True
@@ -74,6 +75,8 @@ class LogoutView(BaseView):
         return redirect(url_for('/admin'))
     def is_accessible(self):
         return current_user.is_authenticated
+    
+    
 class StatsView(BaseView):
     @expose("/")
     def index(self):
@@ -83,9 +86,17 @@ class StatsView(BaseView):
         stats_book_sold = dao.book_sales_frequency(month=int(month) if month else None)
         print(months)
         return self.render('admin/stats.html', stats=stats,selected_month=month,months=months,stats_book_sold=stats_book_sold)
+    
+
+class UserModelView(AdminAuthenticatedView):
+    column_list=['id','name','username','email','user_role']
+    column_editable_list=['user_role']
+    can_create=False
+
 
 admin.add_view(CategoryModelView(Category, db.session))
 admin.add_view(BookModelView(Book, db.session))
+admin.add_view(UserModelView(Client,db.session))
 admin.add_view(OrderModelView(Order, db.session))
 admin.add_view(CancelOrderView(CancelOrder, db.session))
 admin.add_view(OrderDetailView(OrderDetail, db.session))

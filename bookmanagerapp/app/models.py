@@ -8,16 +8,31 @@ from flask_login import current_user
 from datetime import datetime as dt
 from sqlalchemy import text
 from datetime import datetime, timedelta
+import hashlib
+
 
 class UserRole(RoleEnum):
     ADMIN = 1
     USER = 2
+
+    
 class MethodRecevie(RoleEnum):
     AITHECOUNTER = 1
     DELIVERY = 2
+
+
 class MethodBank(RoleEnum):
     MOMO = 1
     BANKWHENGET = 2
+
+
+class CancelReasonState(RoleEnum):
+    PENDINGCANCEL = 0
+    CLIENTREQUIRED = 1
+    CLIENTNOTPAYING = 2
+    SHOPREASON = 3
+    DELIVERYREASON = 4
+
 
 class StateOrder(RoleEnum):
     PENDINGPAYMENT = 1
@@ -25,6 +40,8 @@ class StateOrder(RoleEnum):
     DELIVERING = 3
     CONFIRM = 4
     CANCEL = 5
+
+
 class CategoryBook(db.Model):
     __tablename__ = 'category_book'
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -52,6 +69,8 @@ class Client(db.Model, UserMixin):
     user_role = Column(Enum(UserRole), default=UserRole.USER)
     info_user_order = relationship('InfoUserOrder', backref='client', lazy=True)
     reviews = relationship('Review', backref='client', lazy=True)
+    taked_books = relationship('TakedBook', backref='client', lazy=True)
+    receipts = relationship('Receipt', backref='client',lazy=True)
 
     def __str__(self):
         return self.name
@@ -89,6 +108,7 @@ class Book(BaseModel):
     quantity = Column(Integer, default=1, nullable=False)    
     categories = relationship(Category, secondary='category_book', back_populates='books')
     order_details = relationship('OrderDetail', backref='book', lazy=True)
+    receipt_details = relationship('ReceiptDetail',backref='book',lazy=True)
     def to_dict(self):
         return {
             'id': self.id,
@@ -124,7 +144,7 @@ class TakedBook(BaseModel):
         return str(self.id)
 
 
-class TakedBookDetail(db.Model): 
+class TakedBookDetail(db.Model):
     __tablename__ = 'taked_book_details'
     id = Column(Integer, primary_key=True, autoincrement=True)
     taked_book_id = Column(Integer, ForeignKey(TakedBook.id), nullable=False)
@@ -138,11 +158,11 @@ class TakedBookDetail(db.Model):
 class Receipt(BaseModel):
     id = Column(Integer, primary_key=True, autoincrement=True)
     client_id = Column(Integer, ForeignKey(Client.id), nullable=False)
-    receipt_details = relationship('ReceiptDetails', backref='receipt', lazy=True)
+    receipt_details = relationship('ReceiptDetail', backref='receipt', lazy=True)
     is_pay = Column(Boolean, default=False)
 
 
-class ReceiptDetails(BaseModel):
+class ReceiptDetail(BaseModel):
     id = Column(Integer, primary_key=True, autoincrement=True)
     quantity = Column(Integer, default=0)
     price = Column(Float, default=0)
@@ -173,13 +193,6 @@ class Coupon(BaseModel):
         return self.code
     
 
-# class BookAttention(BaseModel):
-#     __tablename__ = 'book_attentions'
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
-#     client_id = Column(Integer, ForeignKey(Client.id), nullable=False)
-#     def __str__(self):
-#         return str(self.id)
 
 class Order(BaseModel):
     __tablename__ = 'orders'
@@ -191,8 +204,11 @@ class Order(BaseModel):
     coupon_id  = Column(Integer, ForeignKey(Coupon.id), nullable=True)
     delivery_address = Column(String(255), nullable=False)
     state =  Column(Enum(StateOrder), default=StateOrder.PENDINGPAYMENT)
+    cancel_orders = relationship('CancelOrder', backref='order', lazy=True)
+    
     def __str__(self):
         return str(self.id)
+    
     @staticmethod
     def update_order_status():
         with app.app_context():
@@ -229,7 +245,8 @@ class CancelOrder(BaseModel):
     __tablename__ = 'cancel_orders'
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(Integer, ForeignKey(Order.id), nullable=False)
-    reason = Column(String(255), nullable=False)
+    reason = Column(String(255), nullable=False,default='Order get validate time')
+    reason_state = Column(Enum(CancelReasonState), default=CancelReasonState.CLIENTNOTPAYING)
 
     def __str__(self):
         return self.reason
@@ -250,47 +267,18 @@ if __name__ == '__main__':
         # db.session.commit()
 
         # u = Client(name='user', username='user', email='user2k4@gmail.com',password=str(hashlib.md5('123456'.encode('utf-8')).hexdigest()), user_role=UserRole.USER)
+        # db.session.add(u)
+        # ad = Client(name='admin', username='admin', email='user224@gmail.com',password=str(hashlib.md5('123456'.encode('utf-8')).hexdigest()), user_role=UserRole.ADMIN)
+        # db.session.add(ad)
         # programming = get_or_create_category('Programming')
         # python = get_or_create_category('Python')
         # java_cat = get_or_create_category('Java')
 
-        # # Thêm sách với các category
-        # book = Book(
-        #     title='Python2', 
-        #     author='Guido van Rossum', 
-        #     description='Python programming language', 
-        #     image='python.jpg',
-        #     prices=[
-        #         Price(name_price='Giá Gốc', price=1000), 
-        #         Price(name_price='Giá giảm', price=200)
-        #     ],
-        #     categories=[programming, python]
-        # )
+        # co = CancelOrder(order_id=1,reason='don know',reason_state = CancelReasonState.PENDINGCANCEL)
+        # db.session.add(co)
+        db.session.commit()
         
-        # java = Book(
-        #     title='Java', 
-        #     author='James Gosling', 
-        #     description='Java programming language', 
-        #     image='java.jpg',
-        #     prices=[
-        #         Price(name_price='Giá Gốc', price=2000), 
-        #         Price(name_price='Giá giảm', price=400)
-        #     ],
-        #     categories=[programming, java_cat]
-        # )
-        # c = Book(
-        #     title='C', 
-        #     author='James Gosling', 
-        #     description='Java programming language', 
-        #     image='java.jpg',
-        #     prices=[
-        #         Price(name_price='Giá Gốc', price=2000), 
-        #         Price(name_price='Giá giảm', price=400)
-        #     ],
-        #     categories=[programming]
-        # )
 
         # db.session.add(book)
         # db.session.add(java)
-        # db.session.add(u)
-        db.session.commit()
+        # db.session.commit()

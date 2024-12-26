@@ -3,8 +3,9 @@ def count_cart(cart):
 
     if cart:
         for c in cart.values():
-            total_quantiy += c['quantity']
-            total_amount += c['quantity']*c['price']
+            if c['is_selected']:
+                total_quantiy += c['quantity']
+                total_amount += c['quantity']*c['price']
 
     return {
         "total_amount": total_amount,

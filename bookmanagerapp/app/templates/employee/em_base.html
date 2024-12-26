@@ -1,0 +1,206 @@
+{% extends 'admin/base.html' %}
+
+{% block head_css %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/em_style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/book.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/base.csss') }}">
+<!-- Latest compiled and minified CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
+<!-- Latest compiled JavaScript -->
+{% endblock %}
+
+{% block page_body %}
+<div class="page_body">
+
+    <div class='my_init my_container'>
+        <div class='my_navbar my_init'>
+            <!-- MenuBar(Headerbar) -->
+            <div class="navbar">
+                <div class="navbar-inner">
+                    {% block brand %}
+                    <a class="brand my_brand" href="{{ admin_view.admin.url }}">{{ admin_view.admin.name }}</a>
+                    {% endblock %}
+
+                    <nav class="header__navbar">
+                        <ul class="header__navbar-list gird">
+                            <li class="header__navbar-item header__navbar-item--has-qr header__navbar-item--separate">
+                                Vào cửa hàng trên ứng dụng Delta
+                                <div class="header__qr">
+                                    <img src="/static/assets/img/qr_code_Shopee.png" alt="Download QR"
+                                        class="footer__download-qr">
+                                    <div class="header__qr-apps">
+                                        <a href="" class="header__qr-link">
+                                            <img src="/static/assets/img/CH_Play.png" alt="Google Play"
+                                                class="footer__download-app-img">
+                                        </a>
+                                        <a href="" class="header__qr-link"></a>
+                                        <img src="/static/assets/img/App_Store.png" alt="App Store"
+                                            class="footer__download-app-img">
+
+                                    </div>
+                                </div>
+                            </li>
+                            <li class="header__navbar-item">
+                                <!-- use span individual -->
+                                <span class="header__navbar-title--no-pointer">Kết nối</span>
+                                <a href="" class="header__navbar-icon-link"><i
+                                        class="header__navbar-icon fa-brands fa-facebook"></i></a>
+                                <a href="" class="header__navbar-icon-link"><i
+                                        class="header__navbar-icon fa-brands fa-square-instagram"></i></a>
+                            </li>
+
+                        </ul>
+
+                        <ul class="header__navbar-list gird">
+                            <!--<li class="header__navbar-item header__navbar-item--has-notify">
+                            <a href="" class="header__navbar-item-link">
+                                <i class="header__navbar-icon far fa-bell"></i>
+                                Thông báo
+                            </a>
+                            <div class="header__notify">
+                                <header class="header__notify-header">
+                                    <h3>Thông báo mới nhận</h3>
+                                </header>
+                                    <ul class="header__notify-list">
+                                        <li class="header__notify-item header__notify-item--viewed">
+                                            <a href="" class="header__notify-link">
+                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
+                                                <div class="header__notify-info">
+                                                    <span class="header__notify-name">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                    <span class="header__notify-description">Mô tả  ladyaoáodáđâsd Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                </div>
+                                            </a>
+                                        </li>
+            
+                                        <li class="header__notify-item header__notify-item--viewed">
+                                            <a href="" class="header__notify-link">
+                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
+                                                <div class="header__notify-info">
+                                                    <span class="header__notify-name">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                    <span class="header__notify-description">Mô tả Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                </div>
+                                            </a>
+                                        </li>
+            
+                                        <li class="header__notify-item">
+                                            <a href="" class="header__notify-link">
+                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
+                                                <div class="header__notify-info">
+                                                    <span class="header__notify-name">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                    <span class="header__notify-description">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                </div>
+                                            </a>
+                                        </li>
+            
+                                        <li class="header__notify-item">
+                                            <a href="" class="header__notify-link">
+                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
+                                                <div class="header__notify-info">
+                                                    <span class="header__notify-name">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                    <span class="header__notify-description">Mô tả mXác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                </div>
+                                            </a>
+                                        </li>
+            
+                                        <li class="header__notify-item">
+                                            <a href="" class="header__notify-link">
+                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
+                                                <div class="header__notify-info">
+                                                    <span class="header__notify-name">MXác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                    <span class="header__notify-description">Mô tả mXác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                <footer class="header__notify-footer">
+                                    <a href="" class="header__notify-footer-btn">
+                                        Xem tất cả
+                                    </a>
+                                </footer>
+                            </div>
+                        -->
+
+                            <li class="header__navbar-item"><a href="" class="header__navbar-item-link">
+                                    <i class="header__navbar-icon fa-regular fa-circle-question"></i>Trợ giúp
+                                </a>
+                            </li>
+
+                            <li class="header__navbar-item header__navbar-item--strong header__navbar-item--separate"
+                                id="register">Đăng ký</li>
+                            <li class="header__navbar-item header__navbar-item--strong" id="login">Đăng nhập</li>
+
+
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        <!-- Message -->
+        <div class="messages">
+            {% block messages %}
+            {{ layout.messages() }}
+            {% endblock %}
+        </div>
+
+        <!-- body-base -->
+        <div class='my_init my_sub_container'>
+            <div class="sidebar_area">
+                <div class='my_init sidebar'>
+                    {% block main_menu %}
+                    <div class="nav my_test">
+                        {{ layout.menu() }}
+                    </div>
+                    {% endblock %}
+                    {% block menu_links %}
+                    <div class="nav pull-right">
+                        {{ layout.menu_links() }}
+                    </div>
+                    {% endblock %}
+                    {% block access_control %}
+                    {% endblock %}
+    
+                </div>
+    
+            </div>
+            <div class="my_init my_main_container">
+                <div class="my_init main">
+                    {# store the jinja2 context for form_rules rendering logic #}
+                    {% set render_ctx = h.resolve_ctx() %}
+
+                    {% block body %}{% endblock %}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class='my_init my_footer'>
+            <h2 class="my_init">footer</h2>
+            <h2>item1</h2>
+            <h2>item2</h2>
+            <h2>item3</h2>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.onload = ()=> {
+        loadListBase();
+    }
+</script>
+
+{% endblock %}
+
+
+{% block tail_js %}
+<script src={{ url_for('static',filename='js/em_execute.js') }}></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{{ super() }}
+
+{% endblock %}

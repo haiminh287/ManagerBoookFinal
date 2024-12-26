@@ -4,14 +4,14 @@ import dao
 from flask_login import login_user, logout_user,login_required
 from flask_login import current_user
 from enum import Enum as RoleEnum
-import admin
+from admins import admin,em_admin
 import json
 import dao
 import utils
 from datetime import datetime
 import math
 import services
-from models import Order
+from models import CancelReasonState, Order
 from apscheduler.schedulers.background import BackgroundScheduler
 
 class UserRole(RoleEnum):
@@ -116,6 +116,9 @@ def api_check_out():
 @app.route("/orders", methods=['POST'])
 def order_process():
     data = request.form
+    if data.get('name') == '' or data.get('phone') == '' or data.get('email') == '' or data.get('address') == '' \
+    or data.get('payment_method') == '' or data.get('address-receive') == '' or data.get('store') == '':
+        return ''
     print("orders",data)
     cart = session.get('cart', {})
     print("cart",cart)
@@ -374,6 +377,8 @@ def register_process():
             elif dao.check_email_exist(data.get('email')):
                 err_msg = 'Email đã tồn tại!'
                 return jsonify({'success': False, 'err_msg': err_msg})
+            elif request.form.get('name') == '' or request.form.get('username') == '' or request.form.get('email') == '' or request.form.get('password') == '' or request.form.get('password_confirmation') == '':
+                err_msg = ''
             else:
                 dao.add_user(**data)
                 return jsonify({'success': True, 'status': 200})
@@ -523,6 +528,13 @@ def get_history_order(user_id):
     orders = dao.load_orders(user_id)
     print( orders)
     return jsonify(orders), 200
+
+
+@app.route("/api/cancel_orders/<cancel_order_id>", methods=['put'])
+def update_cancel_orders(cancel_order_id):
+    # reason_state = request.json.get('reason_state')
+    cancel_confirm = dao.confirm_cancel_order(cancel_order_id,CancelReasonState.CLIENTREQUIRED)
+    return jsonify(cancel_confirm)
 
 
 scheduler = BackgroundScheduler()
