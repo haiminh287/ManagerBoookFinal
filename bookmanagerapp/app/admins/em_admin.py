@@ -79,6 +79,7 @@ class CancelPendingOrderModelView(EmployeeAuthenticatedView):
                                 .join(Order,CancelOrder.order_id==Order.id)\
                                 .join(InfoUserOrder,InfoUserOrder.id==Order.info_user_order_id)\
                                 .filter(CancelOrder.reason_state==CancelReasonState.PENDINGCANCEL)
+    # db.session.query(CancelOrder)
         #not execute show details
     
 

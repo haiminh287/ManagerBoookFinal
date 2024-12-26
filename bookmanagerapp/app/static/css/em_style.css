@@ -42,14 +42,14 @@
     padding-right: 20px;
 }
 
-.sidebar_area {
+/* .sidebar_area {
     display: flex;
     height: 100vh;
     overflow: hidden;
-}
+} */
 
 .sidebar {
-    flex: 1;
+    flex: 0.15;
     background: greenyellow;
     transform: translateX(0%); 
     transition: all 0.3s ease-in-out; /* Hiệu ứng chuyển động */
@@ -123,17 +123,6 @@ h2 {
     .sidebar {
         min-height: 50px;
     }
-}
-
-.test {
-    display: flex;
-    flex-direction: column;
-}
-
-.my_test {
-    display:flex;
-    /* flex-direction: column; */
-    margin-top:10px;
 }
 
 .my_brand {

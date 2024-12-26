@@ -149,24 +149,22 @@
 
         <!-- body-base -->
         <div class='my_init my_sub_container'>
-            <div class="sidebar_area">
-                <div class='my_init sidebar'>
-                    {% block main_menu %}
-                    <div class="nav my_test">
-                        {{ layout.menu() }}
-                    </div>
-                    {% endblock %}
-                    {% block menu_links %}
-                    <div class="nav pull-right">
-                        {{ layout.menu_links() }}
-                    </div>
-                    {% endblock %}
-                    {% block access_control %}
-                    {% endblock %}
-    
+            <div class='my_init sidebar'>
+                {% block main_menu %}
+                <div class="nav my_test">
+                    {{ layout.menu() }}
                 </div>
-    
+                {% endblock %}
+                {% block menu_links %}
+                <div class="nav pull-right">
+                    {{ layout.menu_links() }}
+                </div>
+                {% endblock %}
+                {% block access_control %}
+                {% endblock %}
+
             </div>
+
             <div class="my_init my_main_container">
                 <div class="my_init main">
                     {# store the jinja2 context for form_rules rendering logic #}
@@ -189,7 +187,7 @@
 </div>
 
 <script>
-    window.onload = ()=> {
+    window.onload = () => {
         loadListBase();
     }
 </script>
@@ -198,7 +196,7 @@
 
 
 {% block tail_js %}
-<script src={{ url_for('static',filename='js/em_execute.js') }}></script>
+<script src={{ url_for('static',filename='js/em_execute.js' ) }}></script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 {{ super() }}
