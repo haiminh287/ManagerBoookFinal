@@ -76,25 +76,15 @@ class CancelPendingOrderModelView(EmployeeAuthenticatedView):
                                 Order.methodReceive.label('method_receive'),
                                 OrderDetail.quantity.label('detail_quantity')
                                 )\
-                                .join(Order,Order.id==CancelOrder.order_id)\
+                                .join(Order,CancelOrder.order_id==Order.id)\
                                 .join(InfoUserOrder,InfoUserOrder.id==Order.info_user_order_id)\
-                                .filter(CancelOrder.reason_state==CancelReasonState.PENDINGCANCEL and Order.state==StateOrder.CANCEL)
+                                .filter(CancelOrder.reason_state==CancelReasonState.PENDINGCANCEL)
         #not execute show details
     
 
 class CancelOrderModelView(EmployeeAuthenticatedView):
     column_list = ['id','order_id','reason','reason_state']
-    column_editable_list = ['reason_state']
-    
-
-    def get_query(self):
-        return db.session.query(CancelOrder.id,
-                                Order.id.label('order_id'),
-                                CancelOrder.reason,
-                                CancelOrder.reason_state)\
-                                .join(Order,Order.id==CancelOrder.order_id)
-    
-
+    column_editable_list = ['reason']
 
 
 class UserModelView(EmployeeAuthenticatedView):

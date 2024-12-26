@@ -49,6 +49,7 @@ class OrderDetailView(BaseModelView):
 
 class CancelOrderView(BaseModelView):
     column_list = ['id','order_id','reason']
+    column_editable_list = ['reason']
 
 class ReviewView(BaseModelView):
     column_list = ['id']
