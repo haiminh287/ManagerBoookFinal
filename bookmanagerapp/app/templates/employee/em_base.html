@@ -1,14 +1,36 @@
 {% extends 'admin/base.html' %}
 
 {% block head_css %}
-{{ super() }}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/em_style.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/base.css') }}">
+<link
+    href="{{ admin_static.url(filename='bootstrap/bootstrap3/swatch/{swatch}/bootstrap.min.css'.format(swatch=config.get('FLASK_ADMIN_SWATCH', 'default')), v='3.3.5') }}"
+    rel="stylesheet">
+{%if config.get('FLASK_ADMIN_SWATCH', 'default') == 'default' %}
+<link href="{{ admin_static.url(filename='bootstrap/bootstrap3/css/bootstrap-theme.min.css', v='3.3.5') }}"
+    rel="stylesheet">
+{%endif%}
+<link href="{{ admin_static.url(filename='admin/css/bootstrap3/admin.css', v='1.1.1') }}" rel="stylesheet">
+<link href="{{ admin_static.url(filename='admin/css/bootstrap3/submenu.css') }}" rel="stylesheet">
+{% if admin_view.extra_css %}
+{% for css_url in admin_view.extra_css %}
+<link href="{{ css_url }}" rel="stylesheet">
+{% endfor %}
+{% endif %}
+<!-- <style>
+    body {
+        padding-top: 4px;
+    }
+</style> -->
+<!-- <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/base.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/book.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/main.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/base.csss') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/base.css') }}"> -->
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/em_style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='assets/css/em_body_style.css') }}">
+<!-- Unicons -->
+<link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.0/css/line.css" />
+
 <!-- Latest compiled and minified CSS -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"> -->
 
 
 <!-- Latest compiled JavaScript -->
@@ -17,188 +39,192 @@
 {% block page_body %}
 <div class="page_body">
 
-    <div class='my_init my_container'>
-        <div class='my_navbar my_init'>
-            <!-- MenuBar(Headerbar) -->
-            <div class="navbar">
-                <div class="navbar-inner">
-                    {% block brand %}
-                    <a class="brand my_brand" href="{{ admin_view.admin.url }}">{{ admin_view.admin.name }}</a>
+    <!--  -->
+    <!-- Body -->
+
+    <div class="my_body">
+        <div class='my_init my_container'>
+            <div class='my_navbar my_init'>
+                <header class="header">
+                    <nav class="nav">
+                        <a href="/" class="nav_logo">
+                            <img src="/static/Logo/Delta.jpg" style="border-radius: 10px;" class="header__logo-img"
+                                width="50px">
+                        </a>
+
+                        <a href="/em/index" class="nav_link my_nav_link">Home</a>
+
+                        <!-- <ul class="nav_items">
+                            <li class="nav_item">
+                                <a href="#" class="nav_link">Home</a>
+                                <a href="#" class="nav_link">Product</a>
+                                <a href="#" class="nav_link">Services</a>
+                                <a href="#" class="nav_link">Contact</a>
+                            </li>
+                        </ul> -->
+                        <div class="login_btn">
+                            {% if current_user.is_authenticated %}
+                            <a href="/em/logout" class="btn my_custom_button" id="form-open">
+                                Logout
+                            </a>
+                            <a class='btn my_custom_button create_receipt' href="/em/cart" target="_blank">create
+                                receipt <i class="uil uil-plus"></i></a>
+
+                            {% else %}
+
+                            <button class="button" id="form-open">Login</button>
+
+                            {% endif %}
+
+                        </div>
+
+                    </nav>
+                </header>
+
+
+            </div>
+            {% block content_site %}
+            <div class='my_init my_sub_container'>
+                <div class='my_init sidebar'>
+                    {% block main_menu %}
+                    <div class="nav sidebar_menu">
+                        {{ layout.menu() }}
+                    </div>
+                    {% endblock %}
+                    {% block menu_links %}
+                    <div class="nav pull-right">
+                        {{ layout.menu_links() }}
+                    </div>
+                    {% endblock %}
+                    {% block access_control %}
                     {% endblock %}
 
-                    <nav class="header__navbar">
-                        <ul class="header__navbar-list gird">
-                            <li class="header__navbar-item header__navbar-item--has-qr header__navbar-item--separate">
-                                Vào cửa hàng trên ứng dụng Delta
-                                <div class="header__qr">
-                                    <img src="/static/assets/img/qr_code_Shopee.png" alt="Download QR"
-                                        class="footer__download-qr">
-                                    <div class="header__qr-apps">
-                                        <a href="" class="header__qr-link">
-                                            <img src="/static/assets/img/CH_Play.png" alt="Google Play"
-                                                class="footer__download-app-img">
-                                        </a>
-                                        <a href="" class="header__qr-link"></a>
-                                        <img src="/static/assets/img/App_Store.png" alt="App Store"
-                                            class="footer__download-app-img">
+                </div>
 
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="header__navbar-item">
-                                <!-- use span individual -->
-                                <span class="header__navbar-title--no-pointer">Kết nối</span>
-                                <a href="" class="header__navbar-icon-link"><i
-                                        class="header__navbar-icon fa-brands fa-facebook"></i></a>
-                                <a href="" class="header__navbar-icon-link"><i
-                                        class="header__navbar-icon fa-brands fa-square-instagram"></i></a>
-                            </li>
+                <div class="my_init my_main_container">
+                    <div class="my_init main">
+                        {# store the jinja2 context for form_rules rendering logic #}
+                        {% set render_ctx = h.resolve_ctx() %}
 
-                        </ul>
+                        {% block body %}{% endblock %}
+                    </div>
 
-                        <ul class="header__navbar-list gird">
-                            <!--<li class="header__navbar-item header__navbar-item--has-notify">
-                            <a href="" class="header__navbar-item-link">
-                                <i class="header__navbar-icon far fa-bell"></i>
-                                Thông báo
-                            </a>
-                            <div class="header__notify">
-                                <header class="header__notify-header">
-                                    <h3>Thông báo mới nhận</h3>
-                                </header>
-                                    <ul class="header__notify-list">
-                                        <li class="header__notify-item header__notify-item--viewed">
-                                            <a href="" class="header__notify-link">
-                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
-                                                <div class="header__notify-info">
-                                                    <span class="header__notify-name">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                    <span class="header__notify-description">Mô tả  ladyaoáodáđâsd Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                </div>
-                                            </a>
-                                        </li>
-            
-                                        <li class="header__notify-item header__notify-item--viewed">
-                                            <a href="" class="header__notify-link">
-                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
-                                                <div class="header__notify-info">
-                                                    <span class="header__notify-name">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                    <span class="header__notify-description">Mô tả Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                </div>
-                                            </a>
-                                        </li>
-            
-                                        <li class="header__notify-item">
-                                            <a href="" class="header__notify-link">
-                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
-                                                <div class="header__notify-info">
-                                                    <span class="header__notify-name">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                    <span class="header__notify-description">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                </div>
-                                            </a>
-                                        </li>
-            
-                                        <li class="header__notify-item">
-                                            <a href="" class="header__notify-link">
-                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
-                                                <div class="header__notify-info">
-                                                    <span class="header__notify-name">Xác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                    <span class="header__notify-description">Mô tả mXác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                </div>
-                                            </a>
-                                        </li>
-            
-                                        <li class="header__notify-item">
-                                            <a href="" class="header__notify-link">
-                                                <img src="https://cdn.vuahanghieu.com/unsafe/0x0/left/top/smart/filters:quality(90)/https://admin.vuahanghieu.com/upload/news/content/2020/07/bo-san-pham-ngan-ngua-lao-hoa-tai-sinh-da-ohui-the-first-geniture-set-mini-5pcs-5d2d9af4b4383-16072019163756-jpg-1594712627-14072020144347.jpg" alt="Mỹ Phẩm Ohui" class="header__notify-img">
-                                                <div class="header__notify-info">
-                                                    <span class="header__notify-name">MXác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                    <span class="header__notify-description">Mô tả mXác thực chính hãng nguồn gốc các sản phẩm Ohui</span>
-                                                </div>
-                                            </a>
-                                        </li>
-                                    </ul>
-                                <footer class="header__notify-footer">
-                                    <a href="" class="header__notify-footer-btn">
-                                        Xem tất cả
-                                    </a>
-                                </footer>
-                            </div>
-                        -->
-
-                            <li class="header__navbar-item"><a href="" class="header__navbar-item-link">
-                                    <i class="header__navbar-icon fa-regular fa-circle-question"></i>Trợ giúp
-                                </a>
-                            </li>
-
-                            <li class="header__navbar-item header__navbar-item--strong header__navbar-item--separate"
-                                id="register">Đăng ký</li>
-                            <li class="header__navbar-item header__navbar-item--strong" id="login">Đăng nhập</li>
-
-
-                        </ul>
-                    </nav>
                 </div>
             </div>
-        </div>
-        <!-- Message -->
-        <div class="messages">
-            {% block messages %}
-            {{ layout.messages() }}
             {% endblock %}
-        </div>
 
-        <!-- body-base -->
-        <div class='my_init my_sub_container'>
-            <div class='my_init sidebar'>
-                {% block main_menu %}
-                <div class="nav my_test">
-                    {{ layout.menu() }}
-                </div>
-                {% endblock %}
-                {% block menu_links %}
-                <div class="nav pull-right">
-                    {{ layout.menu_links() }}
-                </div>
-                {% endblock %}
-                {% block access_control %}
-                {% endblock %}
-
+            <div class='my_init my_footer'>
+                <h2 class="my_init">footer</h2>
             </div>
-
-            <div class="my_init my_main_container">
-                <div class="my_init main">
-                    {# store the jinja2 context for form_rules rendering logic #}
-                    {% set render_ctx = h.resolve_ctx() %}
-
-                    {% block body %}{% endblock %}
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class='my_init my_footer'>
-            <h2 class="my_init">footer</h2>
-            <h2>item1</h2>
-            <h2>item2</h2>
-            <h2>item3</h2>
         </div>
     </div>
-</div>
-
-<script>
-    window.onload = () => {
-        loadListBase();
-    }
-</script>
-
-{% endblock %}
 
 
-{% block tail_js %}
-<script src={{ url_for('static',filename='js/em_execute.js' ) }}></script>
+    <!-- Home -->
+    <section class="home">
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-{{ super() }}
 
-{% endblock %}
+        <div class="form_container">
+            <i class="uil uil-times form_close"></i>
+            <!-- Login From -->
+            <div class="form login_form">
+                <form action="/em/login" method="post">
+                    <h2>Login</h2>
+
+                    <div class="input_box">
+                        <input type="text" placeholder="Enter your username" required name="username" />
+                        <i class="uil uil-user email"></i>
+                    </div>
+                    <div class="input_box">
+                        <input type="password" placeholder="Enter your password" required name="password" />
+                        <i class="uil uil-lock password"></i>
+                        <i class="uil uil-eye-slash pw_hide"></i>
+                    </div>
+
+                    <div class="option_field">
+                        <span class="checkbox">
+                            <input type="checkbox" id="check" />
+                            <label for="check">Remember me</label>
+                        </span>
+                        <!-- <a href="#" class="forgot_pw">Forgot password?</a> -->
+                    </div>
+
+                    <button class="button">Login Now</button>
+
+                    <!-- <div class="login_signup">Don't have an account? <a href="#" id="signup">Signup</a></div> -->
+                </form>
+            </div>
+
+            <!-- Signup From -->
+            <div class="form signup_form">
+                <form action="#">
+                    <h2>Signup</h2>
+
+                    <div class="input_box">
+                        <input type="text" placeholder="Enter your username" required />
+                        <i class="uil uil-user email"></i>
+                    </div>
+                    <div class="input_box">
+                        <input type="password" placeholder="Create password" required />
+                        <i class="uil uil-lock password"></i>
+                        <i class="uil uil-eye-slash pw_hide"></i>
+                    </div>
+                    <div class="input_box">
+                        <input type="password" placeholder="Confirm password" required />
+                        <i class="uil uil-lock password"></i>
+                        <i class="uil uil-eye-slash pw_hide"></i>
+                    </div>
+
+                    <button class="button">Signup Now</button>
+
+                    <div class="login_signup">Already have an account? <a href="#" id="login">Login</a></div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!--  -->
+    <!--  -->
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sidebarMenu = document.querySelector(".sidebar_menu");
+            if (sidebarMenu) {
+                const firstItem = sidebarMenu.querySelector("li");
+                if (firstItem) {
+                    firstItem.remove(); // Loại bỏ phần tử đầu tiên
+                }
+            }
+        });
+    </script>
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const sidebar = document.querySelector(".sidebar");
+            const container = document.querySelector(".my_sub_container");
+
+            container.addEventListener("mousemove", (e) => {
+                if (e.clientX < 50) {
+                    container.style.marginLeft="180px";
+                } else {
+                    console.log(e.target);
+                    container.style.marginLeft="0px";
+                }
+            });
+        });
+    </script>
+
+
+    {% endblock %}
+
+    {% block tail_js %}
+    {{ super() }}
+
+    <script src={{ url_for('static',filename='js/em_execute.js' ) }}></script>
+    <script src={{ url_for('static',filename='assets/javascript/em_script.js' ) }}></script>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+
+
+    {% endblock %}

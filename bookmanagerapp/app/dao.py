@@ -1,5 +1,5 @@
 import json
-from models import Regulation,CategoryBook,TakedBook,TakedBookDetail,Category, Book,Client,Order,InfoUserOrder,OrderDetail,Price,Review,CategoryBook,CancelOrder,Receipt,ReceiptDetail, CancelReasonState
+from models import CategoryBook,TakedBook,TakedBookDetail,Category, Book,Client,Order,InfoUserOrder,OrderDetail,Price,Review,CategoryBook,CancelOrder,Receipt,ReceiptDetail, CancelReasonState, MethodBank, Regulation, StateOrder
 from config import login,db,app
 import hashlib
 from flask_login import current_user
@@ -7,18 +7,6 @@ import cloudinary
 from enum import Enum as RoleEnum
 from sqlalchemy import func
 from datetime import datetime
-
-
-class StateOrder(RoleEnum):
-    PENDINGPAYMENT = 1
-    PENDINGPROCESSING = 2
-    DELIVERING = 3
-    CONFIRM = 4
-    CANCEL = 5
-
-class MethodBank(RoleEnum):
-    MOMO = 1
-    BANKWHENGET = 2
 
 def load_user_by_id(user_id):
     return Client.query.get(user_id)
@@ -31,11 +19,11 @@ def get_order_ids_in_cancle_order():
     order_ids=[item.order_id for item in cancle_order]
     return order_ids
 
-
 def update_status_payed_order(order_id):
     order = Order.query.get(order_id)
     order.state = StateOrder.CONFIRM.name
     db.session.commit()
+
 
 def load_taked_book_detail_by_book_id(book_id):
     return Book.query.filter(Book.id == book_id).first()
@@ -86,9 +74,6 @@ def delete_taked_book_detail_by_book_id(book_id,user_id):
     db.session.delete(taked_book_detail)
     db.session.commit()
     return True
-# 
-
-# dao.py
 
 def update_taked_book_quantity(user_id, book_id, new_quantity):
     taked_book = TakedBook.query.filter_by(client_id=user_id).first()
@@ -107,7 +92,6 @@ def update_taked_book_quantity(user_id, book_id, new_quantity):
         print(ex)
         return False
     return True
-
 
 def add_orders_android(data,address=None,user_id=None):
         address=data.get('address')
@@ -144,7 +128,7 @@ def add_orders_android(data,address=None,user_id=None):
         for taked_book_detail in taked_book_details:
             db.session.delete(taked_book_detail)
         db.session.commit()
-#
+
 def load_categories():
     return Category.query.order_by("id").all()
 
@@ -172,7 +156,6 @@ def load_books(cate_id=None,kw=None,page=1,order='desc'):
     end = start + page_size
     query = query.slice(start,end)
     return query.all()
-
 
 def add_review(book_id, content,rating):
     review = Review(book_id=book_id, content=content, rate=rating,client_id =current_user.id)
@@ -228,7 +211,7 @@ def add_user(name, username, password,email, avatar=None):
     db.session.commit()
 
 def add_cancel_order(order_id, reason):
-    cancel_order = CancelOrder(order_id=order_id, reason=reason)
+    cancel_order = CancelOrder(order_id=order_id, reason=reason,reason_state = CancelReasonState.PENDINGCANCEL.name)
     db.session.add(cancel_order)
     db.session.commit()
     return cancel_order
@@ -269,7 +252,6 @@ def add_book(title, author,image, price,quantity, price_reduced,category_books):
     db.session.commit()
     return book
 
-
 def add_orders(data,cart=None,address=None,user_id=None,method_bank=None):
         existing_entry = None
         if user_id:
@@ -289,7 +271,8 @@ def add_orders(data,cart=None,address=None,user_id=None,method_bank=None):
             )
             db.session.add(info_user_order)
             db.session.commit()
-        state = StateOrder.PENDINGPAYMENT.name if method_bank==MethodBank.MOMO.name else StateOrder.PENDINGPROCESSING.name
+        state = StateOrder.PENDINGPAYMENT.name if method_bank==MethodBank.MOMO.name else StateOrder.PENDINGCONFIRM.name
+        print(state)
         order = Order(info_user_order_id=info_user_order.id, delivery_address=address,methodBank=method_bank,state=state)
         db.session.add(order)
         db.session.commit()
@@ -301,8 +284,6 @@ def add_orders(data,cart=None,address=None,user_id=None,method_bank=None):
                 db.session.add(order_detail)
         db.session.commit()
         return order_id
-
-
 
 def delete_order(order_id):
     order = Order.query.get(order_id)
@@ -355,47 +336,52 @@ def load_orders(user_id):
         ).join(InfoUserOrder, Order.info_user_order_id == InfoUserOrder.id)
     if user_id:
         id_info_user_order = get_id_info_user_order(user_id)
+        print(f'info_user {id_info_user_order}')
         if id_info_user_order:
             result = result.filter(Order.info_user_order_id == id_info_user_order.id)
-        result = result.all()
-        status_display = {
-            "PENDINGPAYMENT": "Chờ Thanh Toán",
-            "PENDINGPROCESSING": "Chờ Xử Lý",
-            "PENDINGCONFIRM": "Chờ Xác Nhận",
-            "DELIVERING": "Đang Giao Hàng",
-            "CONFIRM": "Đã Xác Nhận",
-            "CANCEL": "Đã Hủy"
-        }
-        methodBank_display = {
-            "MOMO": "Thanh Toán MoMo",
-            "BANKWHENGET": "Thanh Toán Khi Nhận Hàng"
-        }
-        orders = []
-        for order in result:
-            print(order.state.name)
-            time_obj = order.created_at
-            formatted_time = time_obj.strftime("%H:%M:%S,  %d/%m/%Y")
-            is_confirm_status = status_display.get(order.state.name, "Không xác định")
-            methodBank_status = methodBank_display.get(order.methodBank.name, "Không xác định")
-            order_dict = {
-                'id': order.id,
-                'created_at': formatted_time,
-                'name': order.name,
-                'delivery_address': order.delivery_address,
-                'phone': order.phone,
-                'method_bank':methodBank_status,
-                'is_confirm': is_confirm_status
+   
+            result = result.all()
+            print("result",result)
+            status_display = {
+                "PENDINGPAYMENT": "Chờ Thanh Toán",
+                "PENDINGPROCESSING": "Đã Được Xác Nhận",
+                "PENDINGCONFIRM": "Chờ Xác Nhận",
+                "DELIVERING": "Đang Giao Hàng",
+                "CONFIRM": "Đã Hoàn Thành",
+                "CANCEL": "Đã Hủy"
             }
-            orders.append(order_dict)
+            methodBank_display = {
+                "MOMO": "Thanh Toán MoMo",
+                "BANKWHENGET": "Thanh Toán Khi Nhận Hàng"
+            }
+            orders = []
+            for order in result:
+                print(order.state.name)
+                time_obj = order.created_at
+                formatted_time = time_obj.strftime("%H:%M:%S,  %d/%m/%Y")
+                is_confirm_status = status_display.get(order.state.name, "Không xác định")
+                methodBank_status = methodBank_display.get(order.methodBank.name, "Không xác định")
+                order_dict = {
+                    'id': order.id,
+                    'created_at': formatted_time,
+                    'name': order.name,
+                    'delivery_address': order.delivery_address,
+                    'phone': order.phone,
+                    'method_bank':methodBank_status,
+                    'is_confirm': is_confirm_status
+                }
+                orders.append(order_dict)
         
-        return orders
+            return orders
 
 def get_book_by_id(book_id):
     return Book.query.get(book_id)
-    
+
 def load_cart(cart, book_id=None):
     if book_id:
         book = get_book_by_id(book_id)
+        print(f"book info: {book}")
+        print(f"book info: {book.prices}")
         if book:
             book_id_str = str(book_id)
             if book_id in cart:
@@ -423,10 +409,10 @@ def add_receipt(cart,is_pay):
             db.session.commit()
         except Exception as ex:
             print(ex)
-            return False
+            return None
         else:
-            return True
-    return False
+            return receipt.id
+    return None
 
 
 def add_taked_book_by_cart(cart):
@@ -519,97 +505,22 @@ def get_taked_books_by_user_id(user_id):
             }
     return cart
 
-def revenue_stats_by_time(time='month', year=datetime.now().year, month=None):
-    query = db.session.query(
-        func.extract(time, Order.created_at),
-        Category.name,
-        func.sum(OrderDetail.quantity * OrderDetail.price),
-        func.count(OrderDetail.id)
-    ) \
-    .join(OrderDetail, OrderDetail.order_id == Order.id) \
-    .join(Book, Book.id == OrderDetail.book_id) \
-    .join(CategoryBook, CategoryBook.book_id == Book.id) \
-    .join(Category, Category.id == CategoryBook.category_id) \
-    .filter(Order.state == StateOrder.CONFIRM.name) \
-    .filter(func.extract('year', Order.created_at) == year)
-    
-    if month:
-        query = query.filter(func.extract('month', Order.created_at) == month)
-    
-    stats = query.group_by(func.extract(time, Order.created_at), Category.name) \
-                 .order_by(func.extract(time, Order.created_at), func.sum(OrderDetail.quantity * OrderDetail.price).desc()).all()
-    months_query = db.session.query(func.distinct(func.extract('month', Order.created_at))).all()
-    months = sorted([int(month[0]) for month in months_query])
-    return stats, months
 
-def revenue_stats_by_time(time='month', year=datetime.now().year, month=None):
-    query = db.session.query(
-        func.extract(time, Order.created_at),
-        Category.name,
-        func.sum(OrderDetail.quantity * OrderDetail.price),
-        func.count(OrderDetail.id)
-    ) \
-    .join(OrderDetail, OrderDetail.order_id == Order.id) \
-    .join(Book, Book.id == OrderDetail.book_id) \
-    .join(CategoryBook, CategoryBook.book_id == Book.id) \
-    .join(Category, Category.id == CategoryBook.category_id) \
-    .filter(Order.state == StateOrder.CONFIRM.name) \
-    .filter(func.extract('year', Order.created_at) == year)
-    
-    if month:
-        query = query.filter(func.extract('month', Order.created_at) == month)
-    
-    stats = query.group_by(func.extract(time, Order.created_at), Category.name) \
-                 .order_by(func.extract(time, Order.created_at), func.sum(OrderDetail.quantity * OrderDetail.price).desc()).all()
-    months_query = db.session.query(func.distinct(func.extract('month', Order.created_at))).all()
-    months = sorted([int(month[0]) for month in months_query])
-    return stats, months
-
-def book_sales_frequency(time='month', year=datetime.now().year, month=None):
-    total_books_sold_subquery = db.session.query(
-        func.count(OrderDetail.id)
-    ).join(Order, Order.id == OrderDetail.order_id) \
-     .filter(Order.state == StateOrder.CONFIRM.name) \
-     .filter(func.extract('year', Order.created_at) == year)
-    
-    if month:
-        total_books_sold_subquery = total_books_sold_subquery.filter(func.extract('month', Order.created_at) == month)
-    
-    total_books_sold = total_books_sold_subquery.scalar()
-
-    query = db.session.query(
-        func.extract(time, Order.created_at),
-        Book.title,
-        Category.name,
-        Book.quantity,
-        func.count(OrderDetail.id),
-        (func.count(OrderDetail.id) / Book.quantity * 100),
-        (func.count(OrderDetail.id) / total_books_sold * 100)
-    ) \
-    .join(OrderDetail, OrderDetail.book_id == Book.id) \
-    .join(Order, Order.id == OrderDetail.order_id) \
-    .join(CategoryBook, CategoryBook.book_id == Book.id) \
-    .join(Category, Category.id == CategoryBook.category_id) \
-    .filter(Order.state == StateOrder.CONFIRM.name) \
-    .filter(func.extract('year', Order.created_at) == year)
-    
-    if month:
-        query = query.filter(func.extract(time, Order.created_at) == month)
-    
-    stats = query.group_by(
-        func.extract(time, Order.created_at),
-        Book.title,
-        Category.name,
-        Book.quantity
-    ).order_by(func.count(OrderDetail.id).desc()).all()
-    
-    return stats
+def test():
+    total_book = db.session.query(Order.id,func.sum(OrderDetail.quantity))\
+        .join(OrderDetail,OrderDetail.order_id==Order.id)\
+        .group_by(Order.id)
+    return total_book
 
 
 def confirm_cancel_order(cancel_order_id ,reason_state = CancelReasonState.CLIENTNOTPAYING):
     cancel_order = CancelOrder.query.get(cancel_order_id)
-    cancel_order.order.state = StateOrder.CANCEL
+    # cancel_order.order.state = StateOrder.CANCEL
     cancel_order.reason_state = reason_state
+    cancel_order.order.state = StateOrder.CANCEL.name
+    print('setup-data')
+
+    # db.session.commit()
     
     try:
         db.session.commit()
@@ -623,10 +534,123 @@ def confirm_cancel_order(cancel_order_id ,reason_state = CancelReasonState.CLIEN
         return {
             'status': 201
         }
+    
+def confirm_order(order_id):
+    order = Order.query.get(order_id)
+    order.state = StateOrder.PENDINGPROCESSING.name
+    try:
+        db.session.commit()
+        print('have confirm_order')
+    except Exception as ex:
+        print(ex)
+        return {
+            'status': 301
+        }
+    else:
+        return {
+            'status': 201
+        }
+    
+
 def get_regulation(name):
     return Regulation.query.filter(Regulation.name == name).first()
 
 
+def revenue_stats_by_time(time='month', year=datetime.now().year, month=None):
+
+    total_books_sold_subquery = db.session.query(
+        func.sum(OrderDetail.quantity)
+    ).join(Order, Order.id == OrderDetail.order_id) \
+     .filter(Order.state == StateOrder.CONFIRM.name) \
+     .filter(func.extract('year', Order.created_at) == year)
+    
+    if month:
+        total_books_sold_subquery = total_books_sold_subquery.filter(func.extract('month', Order.created_at) == month)
+    
+    total_books_sold = total_books_sold_subquery.scalar()
+
+    query = db.session.query(
+        func.extract(time, Order.created_at),
+        Category.name,
+        func.sum(OrderDetail.quantity * OrderDetail.price),
+        func.sum(OrderDetail.quantity),
+        (func.sum(OrderDetail.quantity)/total_books_sold *100),
+    ) \
+    .join(OrderDetail, OrderDetail.order_id == Order.id) \
+    .join(Book, Book.id == OrderDetail.book_id) \
+    .join(CategoryBook, CategoryBook.book_id == Book.id) \
+    .join(Category, Category.id == CategoryBook.category_id) \
+    .filter(Order.state == StateOrder.CONFIRM.name) \
+    .filter(func.extract('year', Order.created_at) == year)\
+    .filter(OrderDetail.book_id == Book.id)\
+    .group_by(Category.id)
+
+    # query = db.session.query(
+    #     func.extract(time, Order.created_at),
+    #     Category.name,
+    #     func.sum(OrderDetail.quantity*OrderDetail.price), # doanh thu
+    #     func.sum(OrderDetail.quantity) #so luot thue
+    # ).join(CategoryBook,CategoryBook.category_id==Category.id)\
+    # .join(Book,CategoryBook.book_id==Book.id)\
+    # .join(OrderDetail,OrderDetail.book_id==Book.id)\
+    # .group_by(Category.id)\
+    # .filter(Order.state == StateOrder.CONFIRM.name) \
+    # .filter(func.extract('year', Order.created_at) == year)\
+    # .filter(OrderDetail.book_id == Book.id)
+
+    if month:
+        query = query.filter(func.extract('month', Order.created_at) == month)
+    
+    stats = query.group_by(func.extract(time, Order.created_at), Category.name) \
+                 .order_by(func.extract(time, Order.created_at), func.sum(OrderDetail.quantity * OrderDetail.price).desc()).all()
+    months_query = db.session.query(func.distinct(func.extract('month', Order.created_at))).all()
+    months = sorted([int(month[0]) for month in months_query])
+    return stats, months
+    # return query
+
+def book_sales_frequency(time='month', year=datetime.now().year, month=None):
+    total_books_sold_subquery = db.session.query(
+        func.sum(OrderDetail.quantity)
+    ).join(Order, Order.id == OrderDetail.order_id) \
+     .filter(Order.state == StateOrder.CONFIRM.name) \
+     .filter(func.extract('year', Order.created_at) == year)
+    
+    if month:
+        total_books_sold_subquery = total_books_sold_subquery.filter(func.extract('month', Order.created_at) == month)
+    
+    total_books_sold = total_books_sold_subquery.scalar()
+
+    
+
+    query = db.session.query(
+        func.extract(time, Order.created_at),
+        Book.title,
+        Category.name,
+        Book.quantity,
+        func.sum(OrderDetail.quantity),
+        (func.sum(OrderDetail.quantity)/total_books_sold * 100),
+        # (func.count(OrderDetail.id) / total_books_sold * 100)
+    ) \
+    .join(OrderDetail, OrderDetail.book_id == Book.id) \
+    .join(Order, Order.id == OrderDetail.order_id) \
+    .join(CategoryBook, CategoryBook.book_id == Book.id) \
+    .join(Category, Category.id == CategoryBook.category_id) \
+    .filter(Order.state == StateOrder.CONFIRM.name) \
+    .filter(func.extract('year', Order.created_at) == year)
+    
+    if month:
+        query = query.filter(func.extract(time, Order.created_at) == month)
+    
+    stats = query.group_by(
+        func.extract(time, Order.created_at),
+        Book.id,
+        Category.id,
+    ).order_by(func.count(OrderDetail.id).desc()).all()
+    
+    return stats
+
+
 if __name__ == '__main__':
     with app.app_context():
-        print(book_sales_frequency(month =12))
+        # print(book_sales_frequency(month =12))
+        print(revenue_stats_by_time())

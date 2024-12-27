@@ -1,3 +1,4 @@
+Nguyễn Hải Minh
 {% extends 'admin/master.html' %}
 {% block body %}
 <!DOCTYPE html>
@@ -79,7 +80,13 @@
                 const tr = document.createElement('tr');
                 for (let j = 0; j < row.length - 2; j++) {
                     const td = document.createElement('td');
+                    if (j === 2) {
+                        td.textContent =row[j];
+                        console.log(td.textContent.split('-'));
+                    } else {
                     td.textContent = row[j];
+                    }
+                    console.log(td.textContent);
                     tr.appendChild(td);
                 }
                 const lastTd = document.createElement('td');
@@ -94,16 +101,29 @@
             const rows = table.getElementsByTagName('tr');
             const data = [];
             const bookAmount = await regulationBookAmount();
-            console.log(bookAmount);
-            if (rows.length <= bookAmount) {
-                alert('Nhập Ít Nhất 150 quyển sách!');
+            let amout=0;
+            let maxQuantity=0;
+            for (let i = 1; i < rows.length; i++){
+                const cells = rows[i].getElementsByTagName('td');
+                if (parseInt(cells[4].textContent)>maxQuantity) {
+                    maxQuantity=parseInt(cells[4].textContent);
+                }
+                amout+=parseInt(cells[4].textContent);
+            }
+            if (amout<= bookAmount ) {
+                alert(`Nhập Ít Nhất ${bookAmount} quyển sách!`);
+                return;
+            }
+            if (maxQuantity>=300) {
+                alert('Số lượng của từng quyển sách phải ít hơn 300!');
                 return;
             }
             for (let i = 1; i < rows.length; i++) {
                 const cells = rows[i].getElementsByTagName('td');
+                console.log(cells[2].textContent.split('-'));
                 const rowData = {
                     title: cells[1].textContent,
-                    category_books: [cells[2].textContent],
+                    category_books:  cells[2].textContent.split('-'),
                     author: cells[3].textContent,
                     quantity: parseInt(cells[4].textContent),
                     price: parseFloat(cells[5].textContent),

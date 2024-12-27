@@ -1,12 +1,11 @@
 from config import app, db
 from sqlalchemy.orm import relationship, declarative_base
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Enum, SmallInteger
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime, Enum, SmallInteger, UniqueConstraint
 from sqlalchemy_utils import EmailType
 from flask_login import UserMixin
 from enum import Enum as RoleEnum
 from flask_login import current_user
 from datetime import datetime as dt
-import dao
 from sqlalchemy import text
 from datetime import datetime, timedelta
 import hashlib
@@ -16,7 +15,7 @@ class UserRole(RoleEnum):
     ADMIN = 1
     USER = 2
     EMPLOYEE = 3
-    StorageManager = 4
+    STORAGEMANAGER = 4
 
     
 class MethodRecevie(RoleEnum):
@@ -38,7 +37,7 @@ class CancelReasonState(RoleEnum):
 
 
 class StateOrder(RoleEnum):
-    PENDINGCONFRIM = 0
+    PENDINGCONFIRM = 0
     PENDINGPAYMENT = 1
     PENDINGPROCESSING = 2
     DELIVERING = 3
@@ -71,10 +70,11 @@ class Client(db.Model, UserMixin):
     email = Column(EmailType, unique=True, nullable=True)
     password = Column(String(512), nullable=False)
     user_role = Column(Enum(UserRole), default=UserRole.USER)
-    info_user_order = relationship('InfoUserOrder', backref='client', lazy=True)
+    info_user_order = relationship('InfoUserOrder', back_populates="client", uselist=False, cascade="all, delete-orphan")
     reviews = relationship('Review', backref='client', lazy=True)
-    taked_books = relationship('TakedBook', backref='client', lazy=True)
+    taked_book = relationship("TakedBook", back_populates='client', uselist=False, cascade="all, delete-orphan")
     receipts = relationship('Receipt', backref='client',lazy=True)
+
 
     def __str__(self):
         return self.name
@@ -133,6 +133,10 @@ class Price(db.Model):
     name_price = Column(String(100), nullable=False)
     price = Column(Float, default=0, nullable=False)
     book_id = Column(Integer, ForeignKey('books.id'), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('name_price', 'book_id', name='uq_name_book'),
+    )
     
     def __str__(self):
         return self.name_price
@@ -141,8 +145,10 @@ class Price(db.Model):
 class TakedBook(BaseModel):
     __tablename__ = 'taked_books'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(Integer, ForeignKey('clients.id'), nullable=False)
+    client_id = Column(Integer, ForeignKey('clients.id'), nullable=False, unique=True)
     details = relationship('TakedBookDetail', backref='taked_book', lazy=True, cascade="all, delete-orphan")
+
+    client = relationship("Client", back_populates="taked_book")
 
     def __str__(self):
         return str(self.id)
@@ -159,21 +165,6 @@ class TakedBookDetail(db.Model):
         return str(self.id)
     
 
-class Receipt(BaseModel):
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(Integer, ForeignKey(Client.id), nullable=False)
-    receipt_details = relationship('ReceiptDetail', backref='receipt', lazy=True)
-    is_pay = Column(Boolean, default=False)
-
-
-class ReceiptDetail(BaseModel):
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    quantity = Column(Integer, default=0)
-    price = Column(Float, default=0)
-    receipt_id = Column(Integer, ForeignKey(Receipt.id), nullable=False)
-    book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
-    
-
 class InfoUserOrder(BaseModel):
     __tablename__ = 'info_user_order'
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -183,6 +174,9 @@ class InfoUserOrder(BaseModel):
     email = Column(EmailType, nullable=False)
     user_id = Column(Integer, ForeignKey(Client.id), nullable=True)
     orders = relationship('Order', backref='client', lazy=True)
+
+    client = relationship('Client',back_populates='info_user_order')
+
     def __str__(self):
         return self.name
     
@@ -195,25 +189,19 @@ class Coupon(BaseModel):
 
     def __str__(self):
         return self.code
-    
-class Regulation(db.Model):
-    _tablename_ = 'regulations'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(50),nullable=False , unique=True)
-    value = Column(Integer,nullable=False)
-
 
 
 class Order(BaseModel):
     __tablename__ = 'orders'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    info_user_order_id = Column(Integer, ForeignKey(InfoUserOrder.id), nullable=True)
+    info_user_order_id = Column(Integer, ForeignKey(InfoUserOrder.id), nullable=False)
     details = relationship('OrderDetail', backref='order', lazy=True, cascade="all, delete-orphan")
     methodReceive = Column(Enum(MethodRecevie), default=MethodRecevie.AITHECOUNTER)
     methodBank = Column(Enum(MethodBank), default=MethodBank.MOMO)
+    coupon_id  = Column(Integer, ForeignKey(Coupon.id), nullable=True)
     delivery_address = Column(String(255), nullable=False)
     state =  Column(Enum(StateOrder), default=StateOrder.PENDINGPAYMENT)
-    cancel_orders = relationship('CancelOrder', backref='order', lazy=True)
+    cancel_order = relationship("CancelOrder", back_populates="order", uselist=False, cascade="all, delete-orphan")
     
     def __str__(self):
         return str(self.id)
@@ -222,22 +210,50 @@ class Order(BaseModel):
     def update_order_status():
         with app.app_context():
             now = datetime.now()
-            cutoff_time = now - timedelta(hours=dao.get_regulation('cancelled_order_total_hour').value)
+            cancel_time_regulation = Regulation.query.filter_by(name='cancelled_order_total_hour').first()
+            time_limit = cancel_time_regulation.value
+            cutoff_time = now - timedelta(hours=time_limit)
             orders_to_update = Order.query.filter(Order.state != StateOrder.CONFIRM, Order.created_at <= cutoff_time).all()
             for order in orders_to_update:
                 order.state = StateOrder.CANCEL
                 db.session.commit()
 
 
-class OrderDetail(BaseModel):
+class OrderDetail(BaseModel):# db.Model
     __tablename__ = 'order_details'
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(Integer, ForeignKey(Order.id), nullable=False)
     book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
     price = Column(Float, default=0, nullable=False)
     quantity = Column(Integer, default=1, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('order_id', 'book_id', name='uq_order_book'),
+    )
+
     def __str__(self):
         return str(self.id)
+    
+
+#chap nhan receipt doc lap order
+class Receipt(BaseModel):
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    client_id = Column(Integer, ForeignKey(Client.id), nullable=False)
+    receipt_details = relationship('ReceiptDetail', backref='receipt', lazy=True)
+    is_pay = Column(Boolean)
+
+
+class ReceiptDetail(BaseModel):# db.Model
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    quantity = Column(Integer, default=0)
+    price = Column(Float, default=0)
+    receipt_id = Column(Integer, ForeignKey(Receipt.id), nullable=False)
+    book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('receipt_id', 'book_id', name='uq_receipt_book'),
+    )
+    
     
 
 class Review(BaseModel):
@@ -247,6 +263,11 @@ class Review(BaseModel):
     content = Column(String(255), nullable=False)
     book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
     rate = Column(SmallInteger, default=5)
+
+    __table_args__ = (
+        UniqueConstraint('client_id', 'book_id', name='uq_client_book'),
+    )
+
     def __str__(self):
         return self.content
     
@@ -257,19 +278,23 @@ class CancelOrder(BaseModel):
     reason = Column(String(255), nullable=False,default='Order get validate time')
     reason_state = Column(Enum(CancelReasonState), default=CancelReasonState.CLIENTNOTPAYING)
 
+    order = relationship("Order", back_populates="cancel_order")
+
     def __str__(self):
         return self.reason
+    
+
+class Regulation(BaseModel):
+    __tablename__ = 'regulations'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50),nullable=False , unique=True)
+    value = Column(Integer,nullable=False)
 
 
 
 if __name__ == '__main__':
     with app.app_context():
-        # db.create_all()
-        # r1 = Regulation(name='import_book_amount',value=150)
-        # r2 = Regulation(name='cancelled_order_total_hour',value=48)
-        # db.session.add(r1)
-        # db.session.add(r2)
-        # db.session.commit()
+        db.create_all()
         # with db.engine.connect() as connection:
         #     connection.execute(text('DROP TABLE IF EXISTS taked_book_details'))
         # db.session.commit()
@@ -280,18 +305,30 @@ if __name__ == '__main__':
         # db.session.add(order)
         # db.session.commit()
 
-        # u = Client(name='user', username='user', email='user2k4@gmail.com',password=str(hashlib.md5('123456'.encode('utf-8')).hexdigest()), user_role=UserRole.USER)
-        # db.session.add(u)
-        # ad = Client(name='admin', username='admin', email='user224@gmail.com',password=str(hashlib.md5('123456'.encode('utf-8')).hexdigest()), user_role=UserRole.ADMIN)
-        # db.session.add(ad)
+        u = Client(name='user', username='user', email='user2k4@gmail.com',password=str(hashlib.md5('123456'.encode('utf-8')).hexdigest()), user_role=UserRole.USER)
+        db.session.add(u)
+        ad = Client(name='admin', username='admin', email='user224@gmail.com',password=str(hashlib.md5('123456'.encode('utf-8')).hexdigest()), user_role=UserRole.ADMIN)
+        db.session.add(ad)
         # programming = get_or_create_category('Programming')
         # python = get_or_create_category('Python')
         # java_cat = get_or_create_category('Java')
 
         # co = CancelOrder(order_id=1,reason='don know',reason_state = CancelReasonState.PENDINGCANCEL)
         # db.session.add(co)
+        # o = Order(info_user_order_id=1,methodReceive=MethodRecevie.AITHECOUNTER,methodBank=MethodBank.BANKWHENGET,
+        #           delivery_address="xin chao test", state=StateOrder.CANCEL)
+        # db.session.add(o)
+        r1 = Regulation(name='import_book_amount',value=150)
+        r2 = Regulation(name='cancelled_order_total_hour',value=48)
+        db.session.add(r1)
+        db.session.add(r2)
         db.session.commit()
         
+        # review1 = Review(client_id=1,content='hello',book_id=2,rate=3)
+        # client_id = Column(Integer, ForeignKey(Client.id), nullable=False)
+        # content = Column(String(255), nullable=False)
+        # book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
+        # rate = Column(SmallInteger, default=5)
 
         # db.session.add(book)
         # db.session.add(java)

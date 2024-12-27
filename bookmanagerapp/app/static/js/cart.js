@@ -294,7 +294,7 @@ function addReview(book_id) {
         const selectedStar = document.querySelector('.star.selected');
         const rating = selectedStar ? selectedStar.getAttribute('data-value') : 5;
         const comment = document.getElementById('comment').value;
-        alert(comment);
+        // alert(comment);
         fetch(`/books/${book_id}/reviews`, {
             method: "post",
             body: JSON.stringify({

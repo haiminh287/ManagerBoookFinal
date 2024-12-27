@@ -1,8 +1,7 @@
-{% extends 'admin/master.html' %}
+{% extends 'admin/model/create.html' %}
+
 
 {% block body %}
-<h1 class="text-center text-info mt-1">GIỎ HÀNG NHÂN VIÊN</h1>
-
 <button onclick="scanBarcode()" class="btn btn-primary">Quét sản phẩm</button>
 {% if 'cart' in session and session.cart %}
 <table class="table">
@@ -19,7 +18,8 @@
         <td>{{ c.title }}</td>
         <td>{{ "{:,.0f}".format(c.price) }} VNĐ</td>
         <td>
-            <input type="number" onblur="updateCart({{ c.id }}, this)" value="{{ c.quantity }}" class="form-control" style="width: 60px; height: 30px;"/>
+            <input type="number" onblur="updateCart({{ c.id }}, this)" value="{{ c.quantity }}" class="form-control"
+                style="width: 60px; height: 30px;" />
         </td>
         <td>
             <button class="btn btn-danger" onclick="deleteCart({{ c.id }}, this)">&times;</button>
@@ -42,18 +42,16 @@
         <input type="radio" id="payment-card" name="payment_method" value="card">
         <label for="payment-card">Chuyển Khoản</label><br>
     </div>
-    <a type="button"  
-    class="btn btn-success">Thanh toán</a>
+    <input type="button" onclick="pay()" value="Thanh toán" class="btn btn-success" />
     {% else %}
-    <p>Vui lòng <a href="/admin/login?next=/admin/cartview">đăng nhập</a> để thanh toán!</p>
+    <p>Vui lòng <a href="/admin?next=/admin/cartview">đăng nhập</a> để thanh toán!</p>
     {% endif %}
-    <h1 id="message"><h1>
-    <div id="qrcode"></div>
+    <h1 id="message">
+        <h1>
+            <div id="qrcode"></div>
 </div>
 {% else %}
 <div class="alert alert-info">KHÔNG có sản phẩm trong giỏ!</div>
 {% endif %}
-
-<script src="{{ url_for('static', filename='js/cart.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cartAdmin.js') }}"></script>
 {% endblock %}

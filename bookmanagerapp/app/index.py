@@ -11,15 +11,11 @@ import utils
 from datetime import datetime
 import math
 import services
-from models import CancelReasonState, Order
+from models import CancelReasonState, Order, UserRole, MethodBank
 from apscheduler.schedulers.background import BackgroundScheduler
+import random
 
-class UserRole(RoleEnum):
-    ADMIN = 1
-    USER = 2
-class MethodBank(RoleEnum):
-    MOMO = 1
-    BANKWHENGET = 2
+
 @app.route("/")
 def index():
     if current_user.is_authenticated:
@@ -136,13 +132,16 @@ def order_process():
     method_bank=method_bank.name
     selected_items= {}
     selected_items = {k: v for k, v in cart.items() if v.get('is_selected')}
+    stk_payment = None
     if not current_user.is_authenticated:
+        if method_bank == MethodBank.MOMO.name:
+            stk_payment = '0337562131'
         if 'address-receive' in data and data.get('address-receive'):
             order_id = dao.add_orders(data, selected_items,address = data.get('address-receive'),method_bank=method_bank)
-            send_email(selected_items, data.get('name'), data.get('phone'), data.get('email'), data.get('address-receive'), utils.count_cart(cart).get('total_amount'))
+            send_email(selected_items, data.get('name'), data.get('phone'), data.get('email'), data.get('address-receive'), utils.count_cart(cart).get('total_amount'),order_id=order_id,method_bank=stk_payment)
         if 'store' in data:
             order_id = dao.add_orders(data, selected_items, address = data.get('store'),method_bank=method_bank)
-            send_email(selected_items, data.get('name'), data.get('phone'), data.get('email'), data.get('store'), utils.count_cart(cart).get('total_amount'),order_id)
+            send_email(selected_items, data.get('name'), data.get('phone'), data.get('email'), data.get('store'), utils.count_cart(cart).get('total_amount'),order_id,method_bank=stk_payment)
     else:
         user_id = current_user.id
         print(data)
@@ -207,7 +206,7 @@ def get_order_status(order_id):
         return jsonify({'status': 'confirmed'})
     if state == 'CANCEL':
         return jsonify({'status': 'cancelled'})
-    if state == 'PENDINGPROCESSING':
+    if state == 'PENDINGCONFIRM' or state == 'PENDINGPROCESSING':
         return jsonify({'status': 'pending'})
     if order_id in order_ids :
         return jsonify({'status': 'requestcancelled'})
@@ -454,23 +453,33 @@ def get_categories():
     return jsonify([cate.to_dict() for cate in categories])
 
 
-# @app.route('/taked-books/pay', methods=['GET'])
-# def pay_taked_book():
-#     taked_book_id = dao.load_taked_books_by_user_id(current_user.id).id
-#     cart = session.get('cart', {})
-#     total_price = cart.get('total_price')
-#     response = services.get_qr_momo(taked_book_id,total_price,'/admin/cartview','/admin')
-#     print(response)
-#     if response.status_code == 200:
-#         response_data = response.json()
-#         print(response_data)
-#         pay_url = response_data.get('payUrl')
-#         if pay_url:
-#             return redirect(pay_url)
-#         else:
-#             return jsonify({'error': 'Pay URL not found in MoMo response'}), 400
-#     else:
-#         return jsonify({'error': 'Failed to connect to MoMo API', 'details': response.text}), 500
+@app.route('/receipts/add')
+
+
+# @app.route('/em/cart', methods=['GET'])
+# def load_em_cart():
+#     pass
+
+
+@app.route('/receipts/pay', methods=['GET'])
+def pay_taked_book():
+    # taked_book_id = dao.load_taked_books_by_user_id(current_user.id).id
+    cart = session.get('cart', {})
+    total_price = cart.get('total_price')
+    response = services.get_qr_momo(random.randrange(100,10000000),str(total_price),'/em/cart','/admin')
+    print(response)
+    if response.status_code == 200:
+        response_data = response.json()
+        print(response_data)
+        pay_url = response_data.get('payUrl')
+        if pay_url:
+            return redirect(pay_url)
+        else:
+            return jsonify({'error': 'Pay URL not found in MoMo response'}), 400
+    else:
+        return jsonify({'error': 'Failed to connect to MoMo API', 'details': response.text}), 500
+
+
 @app.route('/api/login', methods=['POST'])
 def api_login():
     data = request.form
@@ -580,13 +589,6 @@ def get_history_order(user_id):
     print( orders)
     return jsonify(orders), 200
 
-
-@app.route("/api/cancel_orders/<cancel_order_id>", methods=['put'])
-def update_cancel_orders(cancel_order_id):
-    # reason_state = request.json.get('reason_state')
-    cancel_confirm = dao.confirm_cancel_order(cancel_order_id,CancelReasonState.CLIENTREQUIRED)
-    return jsonify(cancel_confirm)
-
 @app.route("/api/regulations/book-amount", methods=['GET'])
 def get_regulations():
     regulation = dao.get_regulation('import_book_amount')
@@ -599,6 +601,48 @@ def get_regulations():
         return jsonify(regulation_dict)
     else:
         return jsonify({'error': 'Regulation not found'}), 404
+
+
+@app.route("/api/cancel_orders/<int:cancel_order_id>", methods=['PATCH'])
+def update_cancel_order(cancel_order_id):
+    # reason_state = request.json.get('reason_state')
+    print(f"cancel_id  : {cancel_order_id}")
+    cancel_confirm = dao.confirm_cancel_order(cancel_order_id,CancelReasonState.CLIENTREQUIRED)
+    return jsonify(cancel_confirm)
+
+
+@app.route("/api/orders/<int:order_id>", methods=['PATCH'])
+def update_order(order_id):
+    confirmed_order = dao.confirm_order(order_id)
+    return jsonify(confirmed_order)
+
+
+# @app.route("/em/cart")
+# def load_employee_cart():
+#     return render_template('admin/cart.html')
+
+
+@app.route("/em/login", methods=['POST'])
+def process_em_login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    user = dao.auth_user(username=username, password=password)
+    if user and UserRole.EMPLOYEE.__eq__(user.user_role):
+        login_user(user)
+        next = request.args.get('next')
+        print(next)
+        if next:
+            return redirect(next)
+    
+    return redirect('/em')
+
+
+@app.route("/em/logout")
+def process_em_logout():
+    logout_user()
+    return redirect('/em/index')
+
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(Order.update_order_status, 'interval', hours=1)

@@ -84,7 +84,7 @@
                         payButton.style.display = 'none';
                     }
                     if (data.status === 'pending') {
-                        button.style.display = 'none';
+                        button.style.display = 'inline-block';
                         const reviewButton = document.getElementById(`review-order-${orderId}`);
                         reviewButton.style.display = 'none';
                         const payButton = document.getElementById(`pay-${orderId}`);

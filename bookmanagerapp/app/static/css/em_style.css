@@ -42,6 +42,26 @@
     padding-right: 20px;
 }
 
+.my_navbar>div {
+    flex:100%;
+    height: 100%;
+}
+
+.item_bar1 {
+    flex:1;
+    background: #1096d0;
+    transform: translateY(10px);
+}
+
+.item_bar2 {
+    flex:1;
+    display: flex;
+    flex-direction: row;
+    background: #23d010;
+    align-items: center;
+    justify-content: flex-end;
+}
+
 /* .sidebar_area {
     display: flex;
     height: 100vh;

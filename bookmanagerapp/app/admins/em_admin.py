@@ -1,56 +1,87 @@
 from flask import redirect, url_for, render_template_string, request
 from markupsafe import Markup
-from flask_admin import Admin,BaseView
+from flask_admin import Admin,BaseView, expose, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
+from flask_admin.contrib.sqla.filters import BaseSQLAFilter
 from sqlalchemy import func
 from config import app, db
 from flask_admin.actions import action
-from models import Order, CancelOrder, Book, InfoUserOrder, CancelReasonState,OrderDetail, Receipt, ReceiptDetail, Client, StateOrder
+from models import Order, CancelOrder, Book, InfoUserOrder, CancelReasonState,OrderDetail, Receipt, ReceiptDetail, Client, StateOrder, UserRole, Price
+from flask_login import current_user
 
 
-em_admin = Admin(app,'Employee Site',template_mode='bootstrap4', url='/em', endpoint='em',base_template='employee/em_base.html')
+class EmployeeAdminIndexView(BaseView):
+    @expose('/')
+    def index(self):
+        return self.render('employee/index.html')
+
+def check_authenticated_employee_site(current_user):
+    return current_user.is_authenticated\
+          and (
+              UserRole.EMPLOYEE.name.__eq__(current_user.user_role.name)\
+          or UserRole.STORAGEMANAGER.name.__eq__(current_user.user_role.name)\
+              or UserRole.ADMIN.name.__eq__(current_user.user_role.name)
+          )
 
 
-class EmployeeAuthenticatedView(ModelView):
+em_admin = Admin(app,'Employee Site',template_mode='bootstrap4', url='/em', endpoint='em',
+                 base_template='employee/em_base.html')
+
+# print(app.blueprints)
+
+class EmployeeAuthenticatedView(BaseView):
+
+    def is_accessible(self):
+        return check_authenticated_employee_site(current_user)
     pass
 
+class EmployeeAuthenticatedModelView(ModelView):
+    column_searchable_list = ['id']
+    # edit_modal=True
+    can_delete=False
+    can_create=False
+    can_edit=True
 
-class OrderAttachedUserModelView(EmployeeAuthenticatedView):
-    column_list=['id','state','name','phone','delivery_adr','email',
-                 'method_bank','method_receive']
+
+    page_size=10
+    def is_accessible(self):
+        return check_authenticated_employee_site(current_user)
+    pass
+    
+
+
+class OrderAttachedUserModelView(EmployeeAuthenticatedModelView):
+    column_list=['id','user_name','phone','delivery_adress','email',
+                 'method_bank','method_receive','test']
+    list_template='employee/can_modals_list.html'
+    column_searchable_list=['id']
+    
+    column_formatters = {
+        'test': lambda v, c, m, p: Markup(f'<a onclick="confirmOrder({m.id})" class="btn my_custom_button"><i class="uil uil-check-circle"></i></a>'),
+    }
     
     def get_query(self):
         return db.session.query(Order.id,
                                 Order.state,
-                                InfoUserOrder.name.label('name'), 
+                                InfoUserOrder.name.label('user_name'), 
                                 InfoUserOrder.phone.label('phone'), 
-                                Order.delivery_address.label('delivery_adr'), 
+                                Order.delivery_address.label('delivery_adress'), 
                                 Order.methodReceive,
                                 InfoUserOrder.email.label('email'), 
                                 Order.methodBank.label('method_bank'),
                                 Order.methodReceive.label('method_receive'))\
-                                .join(InfoUserOrder,InfoUserOrder.id==Order.info_user_order_id)
+                                .join(InfoUserOrder,InfoUserOrder.id==Order.info_user_order_id)\
+                                .filter(Order.state==StateOrder.PENDINGCONFIRM)
     
 
-# @app.route('/user_action/<int:user_id>')
-# def user_action(user_id):
-#     print(f"User ID: {user_id}")
-#     print(request.url_rule)
-#     args = request.args.get('search')
-#     print(args)
-#     return redirect('/em/em_users/?search=user')  # Quay lại trang danh sách
 
-
-class CancelPendingOrderModelView(EmployeeAuthenticatedView):
+class CancelPendingOrderModelView(EmployeeAuthenticatedModelView):
     column_list=['id','order_id','reason','reason_state',
                  'order_state','phone','name','email',
                  'method_bank','method_receive','test']
     column_details_list=['id','order_id','reason','reason_state',
                  'order_state','phone','name','email',
                  'method_bank','method_receive','detail_quantity']
-    can_view_details = True
-    details_modal=True
-    edit_modal=True
     list_template='employee/em_list.html'
 
     column_formatters = {
@@ -61,75 +92,113 @@ class CancelPendingOrderModelView(EmployeeAuthenticatedView):
     #     'test': lambda v, c, m, p: Markup(f'<a href="/user_action/{m.id}" class="btn btn-primary btn-sm">Action</a>')
     # }
 
-
-    
     def get_query(self):
         return db.session.query(CancelOrder.id,
                                 Order.id.label('order_id'),
                                 CancelOrder.reason,
                                 CancelOrder.reason_state,
-                                Order.state.label('order_state'),
                                 InfoUserOrder.phone.label('phone'),
                                 InfoUserOrder.name.label('name'),
                                 InfoUserOrder.email.label('email'),
+                                Order.state.label('order_state'),
                                 Order.methodBank.label('method_bank'),
                                 Order.methodReceive.label('method_receive'),
-                                OrderDetail.quantity.label('detail_quantity')
+                                # func.sum(Order.state)
                                 )\
-                                .join(Order,CancelOrder.order_id==Order.id)\
-                                .join(InfoUserOrder,InfoUserOrder.id==Order.info_user_order_id)\
-                                .filter(CancelOrder.reason_state==CancelReasonState.PENDINGCANCEL)
+                                .join(Order, CancelOrder.order_id==Order.id)\
+                                .join(InfoUserOrder,Order.info_user_order_id==InfoUserOrder.id)\
+                                .filter(CancelOrder.reason_state==CancelReasonState.PENDINGCANCEL and 
+                                        Order.state!=StateOrder.CANCEL)
+    
+                                
     # db.session.query(CancelOrder)
         #not execute show details
     
 
-class CancelOrderModelView(EmployeeAuthenticatedView):
+class CancelOrderModelView(EmployeeAuthenticatedModelView):
     column_list = ['id','order_id','reason','reason_state']
-    column_editable_list = ['reason']
+    column_editable_list = ['reason_state']
+
+    def get_query(self):
+        return db.session.query(CancelOrder)\
+            .join(Order,Order.id==CancelOrder.order_id)\
+            .filter(Order.state!=StateOrder.CANCEL)
 
 
-class UserModelView(EmployeeAuthenticatedView):
-    column_list=['id','name','username','email','user_role']
-    column_editable_list=['user_role']
-    can_create=False
-    column_filters = ['id','name']
-    column_searchable_list = ['name','id']
-    # list_template = 'employee/test_list.html'
+# class UserModelView(EmployeeAuthenticatedView):
+#     column_list=['id','name','username','email','user_role']
+#     column_editable_list=['user_role']
+#     can_create=False
+#     column_filters = ['id','name']
+#     column_searchable_list = ['name','id']
+#     # list_template = 'employee/test_list.html'
 
-    # column_formatters = {
-    #     'test': lambda v, c, m, p: render_template_string(
-    #         '<a href="{{ url_for("user_action", user_id=m.id) }}" class="btn btn-primary btn-sm">Action</a>',
-    #         m=m  # Truyền đối tượng m vào template
-    #     )
-    # }
+#     # column_formatters = {
+#     #     'test': lambda v, c, m, p: render_template_string(
+#     #         '<a href="{{ url_for("user_action", user_id=m.id) }}" class="btn btn-primary btn-sm">Action</a>',
+#     #         m=m  # Truyền đối tượng m vào template
+#     #     )
+#     # }
     
 
-    # Định nghĩa hành động
-    @action('custom_action', 'Custom Action', 'Are you sure?')
-    def custom_action(self, ids):
-        for user_id in ids:
-            print(f"Custom action for user ID: {user_id}")
-        # Thực hiện hành động nào đó
+#     # Định nghĩa hành động
+#     @action('custom_action', 'Custom Action', 'Are you sure?')
+#     def custom_action(self, ids):
+#         for user_id in ids:
+#             print(f"Custom action for user ID: {user_id}")
+#         # Thực hiện hành động nào đó
 
 
 
 
-class ReceiptModelView(EmployeeAuthenticatedView):
-    column_list = ['id','client_id','receipts_detail','is_pay']
+# class ReceiptTempGetCreateModelView(EmployeeAuthenticatedView):
+#     column_list = ['id','client_id','receipts_detail','is_pay']
+#     can_create = True
+#     # create_modal=True
+#     # column_select_related_list = ['client_id']
+#     # list_template='employee/test_list.html'
+#     # create_template='employee/em_create.html'
 
-    # column_select_related_list = ['client_id']
-    
+
+class ReceiptModelView(EmployeeAuthenticatedModelView):
+    column_list = ['id','client_id','receipts_detail']
+    # create_modal=True
 
     #issue now: detail custom, and how to custom for field & button for bar
 
-class ReceiptDetailModelView(EmployeeAuthenticatedView):
-    column_list = ['id','quantity','price','receipt_id','book_id']
+# class ReceiptDetailModelView(EmployeeAuthenticatedView):
+#     column_list = ['id','quantity','price','receipt_id','book_id']
 
 
+class CartView(EmployeeAuthenticatedView):
+    @expose('/')
+    def index(self):
+        return self.render('admin/cart.html')
+    
+    def is_visible(self):
+        return False
+    
 
-em_admin.add_view(OrderAttachedUserModelView(Order,db.session,name="Orders",endpoint='em_orders'))
-em_admin.add_view(CancelPendingOrderModelView(CancelOrder,db.session,name='CancelPendingOrder',endpoint='em_pending_cancels'))
-em_admin.add_view(CancelOrderModelView(CancelOrder,db.session,name='CancelOrder',endpoint='em_cancels'))
-em_admin.add_view(UserModelView(Client,db.session,endpoint='em_users'))
-em_admin.add_view(ReceiptModelView(Receipt,db.session,endpoint='em_receipts'))
-em_admin.add_view(ReceiptDetailModelView(ReceiptDetail,db.session,endpoint='em_receipt_detail'))
+class PriceModelView(EmployeeAuthenticatedModelView):
+    column_list=['id','name_price','price']
+    
+
+class IndexView(BaseView):
+    @expose('/')
+    def index(self):
+        return self.render('employee/index.html')
+    
+    def is_visible(self):
+        return False
+
+
+em_admin.add_view(OrderAttachedUserModelView(Order,db.session,name="Đơn hàng chờ xác nhận",endpoint='em_orders'))
+em_admin.add_view(CancelPendingOrderModelView(CancelOrder,db.session,name='Đơn chờ hủy',endpoint='em_pending_cancels'))
+em_admin.add_view(CancelOrderModelView(CancelOrder,db.session,name='Đơn hủy',endpoint='em_cancels'))
+# em_admin.add_view(UserModelView(Client,db.session,endpoint='em_users'))
+em_admin.add_view(ReceiptModelView(Receipt,db.session,name='Hóa đơn', endpoint='em_receipts_display'))
+# em_admin.add_view(ReceiptDetailModelView(ReceiptDetail,db.session,endpoint='em_receipt_detail'))
+# em_admin.add_view(ReceiptTempGetCreateModelView(Receipt,db.session,endpoint='em_receipts'))
+em_admin.add_view(CartView(name='Tạo hóa đơn bán hàng',endpoint='cart'))
+em_admin.add_view(PriceModelView(Price,db.session,endpoint='em_prices'))
+em_admin.add_view(IndexView(name='test',endpoint='index'))

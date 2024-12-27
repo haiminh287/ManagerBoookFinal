@@ -16,7 +16,7 @@ function loadListBase() {
 
 function confirmPendingCancel(cancel_order_id) {
     fetch(`/api/cancel_orders/${cancel_order_id}`, {
-        method:"put",
+        method:"patch",
         body: JSON.stringify({
             reason_state: "CLIENTREQUIRED"
         }),
@@ -24,8 +24,18 @@ function confirmPendingCancel(cancel_order_id) {
             "Content-Type": "application/json"
         }
     }).then(res => res.json()).then(data => {
-        let item = document.getElementById(`item${cancel_order_id}`);
-        console.log('have get');
+        let item = document.getElementById(`item_${cancel_order_id}`);
+        // console.log('have get');
+        // console.log(`item_${cancel_order_id}`)
         item.style.display = 'none';
+    })
+}
+
+function confirmOrder(order_id) {
+    fetch(`/api/orders/${order_id}`, {
+        method:"patch"
+    }).then(res => res.json()).then(data => {
+        let item = document.getElementById(`item_${order_id}`);
+        item.style.display='none';
     })
 }

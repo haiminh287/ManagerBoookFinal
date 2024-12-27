@@ -41,11 +41,16 @@ def create_message(sender, to, subject, message_text):
     raw = raw.decode()
     return {'raw': raw}
 
-def send_email(cart, name, phone, email, address, total_amount, order_id):
+def send_email(cart, name, phone, email, address, total_amount, order_id, method_bank=None):
     try:
         service = get_gmail_service()
         subject = "Thông Tin Đơn Hàng"
         formatted_total_amount = "{:,.0f}".format(total_amount).replace(",", ".")
+        
+        method_bank_html = ""
+        if method_bank:
+            method_bank_html = f"<h1>Vui lòng thanh toán với stk: {method_bank} - Ngân hàng: MoMo</h1>"
+
         body = f"""
         <html>
         <body>
@@ -58,6 +63,7 @@ def send_email(cart, name, phone, email, address, total_amount, order_id):
             <p><strong>Email:</strong> {email}</p>
             <p><strong>Địa Chỉ Nhận:</strong> {address}</p>
             <p><strong>Tổng Tiền:</strong> {formatted_total_amount} VNĐ</p>
+            {method_bank_html}
             <h2>Chi Tiết Đơn Hàng:</h2>
             <table class="table table-bordered table-striped table-hover"  border="1">
                 <thead class="table-dark fs-3">
