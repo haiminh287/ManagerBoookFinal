@@ -37,7 +37,7 @@
                     <td >
                         <a href="/orders/{{ order.id }}" class="btn btn-primary btn-sm fs-4">Chi tiết</a>
                         <a href="/orders/{{ order.id }}/review" class="btn btn-primary btn-sm fs-4" id="review-order-{{ order.id }}" style="display:none">Đánh Giá</a>
-                        <a href="" class="btn btn-success btn-sm fs-4">Thanh Toán</a>
+                        <a href="/orders/{{ order.id }}/pay" class="btn btn-success btn-sm fs-4" target="_blank" id="pay-{{ order.id }}">Thanh Toán</a>
                         <a href="/orders/{{ order.id }}/cancel" class="btn btn-danger btn-sm fs-4 cancel-order" data-order-id="{{ order.id }}">Yêu Cầu Hủy</a>
                     </td>
                 </tr>
@@ -66,13 +66,29 @@
                 .then(res => res.json())
                 .then(data => {
                     console.log(data);
-                    if (data.status === 'cancelled') {
+                    if (data.status === 'requestcancelled') {
                         button.style.display = 'none';
                     }
                     if (data.status === 'confirmed') {
                         const reviewButton = document.getElementById(`review-order-${orderId}`);
                         reviewButton.style.display = 'inline-block';
                         button.style.display = 'none';
+                        const payButton = document.getElementById(`pay-${orderId}`);
+                        payButton.style.display = 'none';
+                    }
+                    if (data.status === 'cancelled') {
+                        button.style.display = 'none';
+                        const reviewButton = document.getElementById(`review-order-${orderId}`);
+                        reviewButton.style.display = 'none';
+                        const payButton = document.getElementById(`pay-${orderId}`);
+                        payButton.style.display = 'none';
+                    }
+                    if (data.status === 'pending') {
+                        button.style.display = 'none';
+                        const reviewButton = document.getElementById(`review-order-${orderId}`);
+                        reviewButton.style.display = 'none';
+                        const payButton = document.getElementById(`pay-${orderId}`);
+                        payButton.style.display = 'none';
                     }
                 })
                 .catch(error => console.error('Error:', error));

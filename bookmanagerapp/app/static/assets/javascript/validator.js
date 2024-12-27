@@ -87,9 +87,9 @@ function Validator(options) {
                 },{});
                 options.onSubmit(formValues);
                 } 
-                // else {
-                //     formElement.submit();
-                // }
+                else {
+                    formElement.submit();
+                }
             }
         } 
         options.rules.forEach(function (rule) {

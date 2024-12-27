@@ -42,9 +42,9 @@
         <input type="radio" id="payment-card" name="payment_method" value="card">
         <label for="payment-card">Chuyển Khoản</label><br>
     </div>
-    <input type="button" onclick="pay()" value="Thanh toán" class="btn btn-success" />
+    <a type="button" href='' class="btn btn-success">Thanh toán</a>
     {% else %}
-    <p>Vui lòng <a href="/admin?next=/admin/cartview">đăng nhập</a> để thanh toán!</p>
+    <p>Vui lòng <a href="/admin/login?next=/admin/cartview">đăng nhập</a> để thanh toán!</p>
     {% endif %}
     <h1 id="message"><h1>
     <div id="qrcode"></div>
@@ -52,5 +52,7 @@
 {% else %}
 <div class="alert alert-info">KHÔNG có sản phẩm trong giỏ!</div>
 {% endif %}
+
+<script src="{{ url_for('static', filename='js/cart.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cartAdmin.js') }}"></script>
 {% endblock %}

@@ -103,7 +103,11 @@ def cart():
 
 @app.route("/checkout",methods=['GET'])
 def check_out():
-    return render_template('checkout.html')
+    info_user = None
+    if  current_user.is_authenticated:
+        info_user = dao.load_info_user_order_by_user_id(current_user.id)
+        print(info_user)
+    return render_template('checkout.html',info_user=info_user)
 
 
 @app.route("/api/check-cart",methods=['GET'])
@@ -113,11 +117,13 @@ def api_check_out():
     if selected_items:
         return jsonify({'status': 'ok'})
     return jsonify({'status': 'empty'})
+
+from sendEmail.sendmail import send_email
 @app.route("/orders", methods=['POST'])
 def order_process():
     data = request.form
     if data.get('name') == '' or data.get('phone') == '' or data.get('email') == '' or data.get('address') == '' \
-    or data.get('payment_method') == '' or data.get('address-receive') == '' or data.get('store') == '':
+    or data.get('payment_method') == '' or (data.get('address-receive') == '' and data.get('store') == ''):
         return ''
     print("orders",data)
     cart = session.get('cart', {})
@@ -131,21 +137,28 @@ def order_process():
     selected_items= {}
     selected_items = {k: v for k, v in cart.items() if v.get('is_selected')}
     if not current_user.is_authenticated:
-        if 'address-receive' in data:
-            dao.add_orders(data, selected_items,address = data.get('address-receive'),method_bank=method_bank)
+        if 'address-receive' in data and data.get('address-receive'):
+            order_id = dao.add_orders(data, selected_items,address = data.get('address-receive'),method_bank=method_bank)
+            send_email(selected_items, data.get('name'), data.get('phone'), data.get('email'), data.get('address-receive'), utils.count_cart(cart).get('total_amount'))
         if 'store' in data:
-            dao.add_orders(data, selected_items, address = data.get('store'),method_bank=method_bank)
+            order_id = dao.add_orders(data, selected_items, address = data.get('store'),method_bank=method_bank)
+            send_email(selected_items, data.get('name'), data.get('phone'), data.get('email'), data.get('store'), utils.count_cart(cart).get('total_amount'),order_id)
     else:
         user_id = current_user.id
-        if 'address-receive' in data:
+        print(data)
+        if 'address-receive' in data and data.get('address-receive'):
             dao.add_orders(data, selected_items,address = data.get('address-receive'),user_id=user_id,method_bank=method_bank)
-        if 'store' in data:
+        if 'store' in data :
             dao.add_orders(data, selected_items, address = data.get('store'),user_id=user_id,method_bank=method_bank)
         print("selected",selected_items)
         dao.delete_book_selected_in_taked_book_detail(selected_items)
     flash("Đặt hàng thành công!", "success")
     session['cart'] = {k: v for k, v in cart.items() if not v.get('is_selected')}
-    return redirect('/')
+    if 'selected_all' in session:
+        del session['selected_all']
+    if not current_user.is_authenticated:
+        return redirect('/')
+    return redirect('/historyorder')
 
 @app.route("/orders/<order_id>",methods=['GET'])
 def order_detail(order_id):
@@ -192,8 +205,12 @@ def get_order_status(order_id):
     order_id = int(order_id)
     if state == 'CONFIRM':
         return jsonify({'status': 'confirmed'})
-    if order_id in order_ids :
+    if state == 'CANCEL':
         return jsonify({'status': 'cancelled'})
+    if state == 'PENDINGPROCESSING':
+        return jsonify({'status': 'pending'})
+    if order_id in order_ids :
+        return jsonify({'status': 'requestcancelled'})
     return jsonify({'status': 'active'})
 
 
@@ -225,14 +242,44 @@ def add_book():
 
     return jsonify([book.to_dict() for book in added_books])
 # @login.user_loader
-@app.route("/historyorder")
+@app.route("/historyorder",methods=['GET'])
 @login_required
 def history_order():
     orders= None
+    data = request.args.to_dict()
+    print('data',data)
+    if data:
+        print(f"Redirect data: {data}")
+        result_code = services.ger_respone_momo(data)
+        
+        order_id = data.get('orderInfo').split('#')[1]
+        if result_code == '0':
+            dao.update_status_payed_order(int(order_id))
+            print("Payment successful")
+        else:
+            print("Payment failed")
     if current_user.is_authenticated:
         orders = dao.load_orders(current_user.id)
         print(orders)
     return render_template('historyorder.html',orders=orders)
+
+
+@app.route("/orders/<order_id>/pay",methods=['get'])
+def pay_order(order_id):
+    order = dao.load_order_by_id(order_id)
+    total_price = int(order['total_price'])
+    response = services.get_qr_momo(order_id,total_price,'/historyorder',f'/orders/{order_id}/momo')
+    if response.status_code == 200:
+        response_data = response.json()
+        pay_url = response_data.get('payUrl')
+        if pay_url:
+            return redirect(pay_url)
+        else:
+            return jsonify({'error': 'Pay URL not found in MoMo response'}), 400
+    else:
+        return jsonify({'error': 'Failed to connect to MoMo API', 'details': response.text}), 500
+    
+
 @app.route("/api/cart", methods=['POST'])
 def add_to_cart():
     data = request.json
@@ -317,17 +364,17 @@ def delete_cart(book_id):
 
 @app.route('/admin/login', methods=['post'])
 def login_admin():
-    username = request.form.get('username')
-    password = request.form.get('password')
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-    user = dao.auth_user(username=username, password=password)
-    if user:
-        login_user(user, remember=True)
-    next = request.args.get('next')
-    print(next)
-    if next:
-        return redirect(next)
-    return redirect('/admin')
+        user = dao.auth_user(username=username, password=password)
+        if user:
+            login_user(user, remember=True)
+        next = request.args.get('next')
+        print(next)
+        if next:
+            return redirect(next)
+        return redirect('/admin')
 
 @app.route('/login', methods=['post'])
 def login_view():
@@ -366,7 +413,6 @@ def register_process():
     if request.method == 'POST':
         confirm = request.form.get('password_confirmation')
         password = request.form.get('password')
-        print()
         if password == confirm:
             data = request.form.copy()
             print(data)
@@ -397,20 +443,6 @@ def scan():
     return jsonify(utils.count_cart(session['cart']))
 
 
-@app.route("/api/pay", methods=['post'])
-def pay():
-    payment_method = request.json.get('payment_method')
-    cart = session.get('cart')
-    print(payment_method)
-    if payment_method.__eq__("cash"):
-        if dao.add_receipt(cart,True):
-            del session['cart']
-            return jsonify({'status': 200,'msg':'Đặt hàng thành công!', 'method':'cash'})
-    if payment_method.__eq__("card"):
-        if dao.add_receipt(cart,False):
-            return jsonify({'status': 200,'msg':'Vùi lòng chuyển khoản!','method':'card'})
-
-    return jsonify({'status': 500, 'err_msg': 'Something wrong!'})
 @app.route("/api/books", methods=['GET'])
 def get_books():
     books = dao.load_books()
@@ -420,6 +452,25 @@ def get_books():
 def get_categories():
     categories = dao.load_categories()
     return jsonify([cate.to_dict() for cate in categories])
+
+
+# @app.route('/taked-books/pay', methods=['GET'])
+# def pay_taked_book():
+#     taked_book_id = dao.load_taked_books_by_user_id(current_user.id).id
+#     cart = session.get('cart', {})
+#     total_price = cart.get('total_price')
+#     response = services.get_qr_momo(taked_book_id,total_price,'/admin/cartview','/admin')
+#     print(response)
+#     if response.status_code == 200:
+#         response_data = response.json()
+#         print(response_data)
+#         pay_url = response_data.get('payUrl')
+#         if pay_url:
+#             return redirect(pay_url)
+#         else:
+#             return jsonify({'error': 'Pay URL not found in MoMo response'}), 400
+#     else:
+#         return jsonify({'error': 'Failed to connect to MoMo API', 'details': response.text}), 500
 @app.route('/api/login', methods=['POST'])
 def api_login():
     data = request.form
@@ -536,6 +587,18 @@ def update_cancel_orders(cancel_order_id):
     cancel_confirm = dao.confirm_cancel_order(cancel_order_id,CancelReasonState.CLIENTREQUIRED)
     return jsonify(cancel_confirm)
 
+@app.route("/api/regulations/book-amount", methods=['GET'])
+def get_regulations():
+    regulation = dao.get_regulation('import_book_amount')
+    if regulation:
+        regulation_dict = {
+            'id': regulation.id,
+            'name': regulation.name,
+            'value': regulation.value
+        }
+        return jsonify(regulation_dict)
+    else:
+        return jsonify({'error': 'Regulation not found'}), 404
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(Order.update_order_status, 'interval', hours=1)

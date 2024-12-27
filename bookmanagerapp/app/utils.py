@@ -1,10 +1,12 @@
 def count_cart(cart):
     total_amount, total_quantiy = 0, 0
-
+    
     if cart:
         for c in cart.values():
             total_quantiy += c['quantity']
-            if c['is_selected']:
+            if 'is_selected' not in c :
+                total_amount += c['quantity']*c['price']
+            elif c['is_selected']:
                 total_amount += c['quantity']*c['price']
 
     return {

@@ -1,5 +1,5 @@
 import json
-from models import CategoryBook,TakedBook,TakedBookDetail,Category, Book,Client,Order,InfoUserOrder,OrderDetail,Price,Review,CategoryBook,CancelOrder,Receipt,ReceiptDetail, CancelReasonState
+from models import Regulation,CategoryBook,TakedBook,TakedBookDetail,Category, Book,Client,Order,InfoUserOrder,OrderDetail,Price,Review,CategoryBook,CancelOrder,Receipt,ReceiptDetail, CancelReasonState
 from config import login,db,app
 import hashlib
 from flask_login import current_user
@@ -16,14 +16,27 @@ class StateOrder(RoleEnum):
     CONFIRM = 4
     CANCEL = 5
 
+class MethodBank(RoleEnum):
+    MOMO = 1
+    BANKWHENGET = 2
+
 def load_user_by_id(user_id):
     return Client.query.get(user_id)
 
+def load_info_user_order_by_user_id(user_id):
+    return InfoUserOrder.query.filter(InfoUserOrder.user_id == user_id).first()
 
 def get_order_ids_in_cancle_order():
     cancle_order = CancelOrder.query.all()
     order_ids=[item.order_id for item in cancle_order]
     return order_ids
+
+
+def update_status_payed_order(order_id):
+    order = Order.query.get(order_id)
+    order.state = StateOrder.CONFIRM.name
+    db.session.commit()
+
 def load_taked_book_detail_by_book_id(book_id):
     return Book.query.filter(Book.id == book_id).first()
 
@@ -276,7 +289,8 @@ def add_orders(data,cart=None,address=None,user_id=None,method_bank=None):
             )
             db.session.add(info_user_order)
             db.session.commit()
-        order = Order(info_user_order_id=info_user_order.id, delivery_address=address,methodBank=method_bank)
+        state = StateOrder.PENDINGPAYMENT.name if method_bank==MethodBank.MOMO.name else StateOrder.PENDINGPROCESSING.name
+        order = Order(info_user_order_id=info_user_order.id, delivery_address=address,methodBank=method_bank,state=state)
         db.session.add(order)
         db.session.commit()
         order_id = order.id
@@ -286,6 +300,7 @@ def add_orders(data,cart=None,address=None,user_id=None,method_bank=None):
                 order_detail = OrderDetail(order_id=order_id, book_id=v.get('id'), quantity=v.get('quantity'),price = v.get('price'))
                 db.session.add(order_detail)
         db.session.commit()
+        return order_id
 
 
 
@@ -343,10 +358,10 @@ def load_orders(user_id):
         if id_info_user_order:
             result = result.filter(Order.info_user_order_id == id_info_user_order.id)
         result = result.all()
-        print("result",result)
         status_display = {
             "PENDINGPAYMENT": "Chờ Thanh Toán",
             "PENDINGPROCESSING": "Chờ Xử Lý",
+            "PENDINGCONFIRM": "Chờ Xác Nhận",
             "DELIVERING": "Đang Giao Hàng",
             "CONFIRM": "Đã Xác Nhận",
             "CANCEL": "Đã Hủy"
@@ -377,6 +392,7 @@ def load_orders(user_id):
 
 def get_book_by_id(book_id):
     return Book.query.get(book_id)
+    
 def load_cart(cart, book_id=None):
     if book_id:
         book = get_book_by_id(book_id)
@@ -607,6 +623,8 @@ def confirm_cancel_order(cancel_order_id ,reason_state = CancelReasonState.CLIEN
         return {
             'status': 201
         }
+def get_regulation(name):
+    return Regulation.query.filter(Regulation.name == name).first()
 
 
 if __name__ == '__main__':

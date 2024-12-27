@@ -6,6 +6,7 @@ from flask_login import UserMixin
 from enum import Enum as RoleEnum
 from flask_login import current_user
 from datetime import datetime as dt
+import dao
 from sqlalchemy import text
 from datetime import datetime, timedelta
 import hashlib
@@ -14,6 +15,8 @@ import hashlib
 class UserRole(RoleEnum):
     ADMIN = 1
     USER = 2
+    EMPLOYEE = 3
+    StorageManager = 4
 
     
 class MethodRecevie(RoleEnum):
@@ -35,6 +38,7 @@ class CancelReasonState(RoleEnum):
 
 
 class StateOrder(RoleEnum):
+    PENDINGCONFRIM = 0
     PENDINGPAYMENT = 1
     PENDINGPROCESSING = 2
     DELIVERING = 3
@@ -192,16 +196,21 @@ class Coupon(BaseModel):
     def __str__(self):
         return self.code
     
+class Regulation(db.Model):
+    _tablename_ = 'regulations'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50),nullable=False , unique=True)
+    value = Column(Integer,nullable=False)
+
 
 
 class Order(BaseModel):
     __tablename__ = 'orders'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    info_user_order_id = Column(Integer, ForeignKey(InfoUserOrder.id), nullable=False)
+    info_user_order_id = Column(Integer, ForeignKey(InfoUserOrder.id), nullable=True)
     details = relationship('OrderDetail', backref='order', lazy=True, cascade="all, delete-orphan")
     methodReceive = Column(Enum(MethodRecevie), default=MethodRecevie.AITHECOUNTER)
     methodBank = Column(Enum(MethodBank), default=MethodBank.MOMO)
-    coupon_id  = Column(Integer, ForeignKey(Coupon.id), nullable=True)
     delivery_address = Column(String(255), nullable=False)
     state =  Column(Enum(StateOrder), default=StateOrder.PENDINGPAYMENT)
     cancel_orders = relationship('CancelOrder', backref='order', lazy=True)
@@ -213,7 +222,7 @@ class Order(BaseModel):
     def update_order_status():
         with app.app_context():
             now = datetime.now()
-            cutoff_time = now - timedelta(hours=48)
+            cutoff_time = now - timedelta(hours=dao.get_regulation('cancelled_order_total_hour').value)
             orders_to_update = Order.query.filter(Order.state != StateOrder.CONFIRM, Order.created_at <= cutoff_time).all()
             for order in orders_to_update:
                 order.state = StateOrder.CANCEL
@@ -255,7 +264,12 @@ class CancelOrder(BaseModel):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        # db.create_all()
+        # r1 = Regulation(name='import_book_amount',value=150)
+        # r2 = Regulation(name='cancelled_order_total_hour',value=48)
+        # db.session.add(r1)
+        # db.session.add(r2)
+        # db.session.commit()
         # with db.engine.connect() as connection:
         #     connection.execute(text('DROP TABLE IF EXISTS taked_book_details'))
         # db.session.commit()

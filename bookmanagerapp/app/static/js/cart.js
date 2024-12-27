@@ -28,8 +28,6 @@ function addToCart(id, title, price,image) {
         let carts = document.getElementsByClassName("cart-counter");
         for (let d of carts)
             d.innerText = data.total_quantity;
-        
-
         showToast('liveToast','.toast-container');
         const data_book =data.books;
         const c= data_book[id];
@@ -37,6 +35,10 @@ function addToCart(id, title, price,image) {
         console.log(book);
         if (book) {
             book.remove();
+        }
+        let noProductElement = document.querySelector('.header__cart-list-item.d-flex');
+        if (noProductElement) {
+            noProductElement.remove();
         }
         let cartList =document.getElementById("cart-list") ;
         if (!cartList) {
@@ -51,7 +53,7 @@ function addToCart(id, title, price,image) {
             <div class="header__cart-item-head">
                 <h5 class="header__cart-item-name">${c.title}</h5>
                 <div class="header__cart-item-price-wrap">
-                    <span class="header__cart-item-price">${c.price}</span>
+                <span class="header__cart-item-price">${c.price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/,/g, '.')}</span>
                     <span class="header__cart-item-multiply">x</span>
                     <span class="header__cart-item-quantity cart_quantity${c.id}">${c.quantity}</span>
                 </div>
@@ -60,6 +62,14 @@ function addToCart(id, title, price,image) {
     </li>`;
         let cardList =document.getElementById("cart-list") ;
         cardList.innerHTML = html +cardList.innerHTML;
+        let viewCartButton = document.querySelector('.header__cart-view-cart');
+        if (!viewCartButton) {
+            viewCartButton = document.createElement("a");
+            viewCartButton.href = "/cart";
+            viewCartButton.className = "header__cart-view-cart button btn--primary";
+            viewCartButton.innerText = "Xem giỏ hàng";
+            document.querySelector('.header__cart-list').appendChild(viewCartButton);
+        }
     });
 }
 
@@ -89,7 +99,7 @@ function updateCart(id, obj) {
         d.innerText = (data.books[id].price * data.books[id].quantity).toLocaleString('vi-VN', { minimumFractionDigits: 0 }).replace(/,/g, '.') + " VNĐ";
         let amounts = document.getElementsByClassName("cart-amount");
         for (let d of amounts)
-            d.innerText = data.total_amount.toLocaleString("en");
+            d.innerText = data.total_amount.toLocaleString("en").replace(',','.') +'VNĐ';
     }).catch(function(error) {
         console.error('Error:', error);
         obj.disabled = false;
@@ -109,6 +119,9 @@ function updateSelection(id, checkbox) {
       .then(data => {
           checkbox.disabled = false;
         console.log('Selection updated successfully');
+        let amounts = document.getElementsByClassName("cart-amount");
+        for (let d of amounts)
+            d.innerText = data.total_amount.toLocaleString("en").replace(',','.') +'VNĐ';
       }).catch(error => {
           console.error('Error:', error);
           checkbox.disabled = false;
@@ -126,6 +139,9 @@ function updateAllSelections(ids, isSelected) {
     }).then(response => response.json())
       .then(data => {
         console.log('Selection updated successfully');
+        let amounts = document.getElementsByClassName("cart-amount");
+        for (let d of amounts)
+            d.innerText = data.total_amount.toLocaleString("en").replace(',','.') +'VNĐ';
       }).catch(error => {
           console.error('Error:', error);
           ids.forEach(id => {
@@ -158,7 +174,7 @@ function deleteCart(id, obj) {
 
             let amounts = document.getElementsByClassName("cart-amount");
             for (let d of amounts)
-                d.innerText = data.total_amount.toLocaleString("en");
+                d.innerText = data.total_amount.toLocaleString("en").replace(',','.') +'VNĐ';
 
 
             let elements = document.getElementsByClassName(`book${id}`);

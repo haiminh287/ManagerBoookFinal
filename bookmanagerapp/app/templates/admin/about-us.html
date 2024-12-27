@@ -21,7 +21,7 @@
     </style>
 </head>
 <body>
-    <h1>Upload a File</h1>
+    <h1>Nhập Sách</h1>
     <input type="file" id="fileInput" />
     <table id="dataTable">
         <thead>
@@ -43,15 +43,31 @@
                 reader.readAsText(file);
             }
         });
-
+        async function regulationBookAmount() {
+            try {
+                const response = await fetch('/api/regulations/book-amount', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                console.log(result.value);
+                return result.value;
+            } catch (error) {
+                console.error('Error:', error);
+                return null;
+            }
+        }
+        
         function displayData(contents) {
             const lines = contents.split('\n');
             const tableHeader = document.getElementById('tableHeader');
             const tableBody = document.getElementById('tableBody');
-
+        
             tableHeader.innerHTML = '';
             tableBody.innerHTML = '';
-
+        
             const headers = lines[0].split(',').map(header => header.trim());
             headers.forEach(header => {
                 const th = document.createElement('th');
@@ -72,13 +88,18 @@
                 tableBody.appendChild(tr);
             }
         }
-
-        document.getElementById('submitButton').addEventListener('click', function() {
+        
+        document.getElementById('submitButton').addEventListener('click', async function() {
             const table = document.getElementById('dataTable');
             const rows = table.getElementsByTagName('tr');
             const data = [];
-
-            for (let i = 1; i < rows.length; i++) { 
+            const bookAmount = await regulationBookAmount();
+            console.log(bookAmount);
+            if (rows.length <= bookAmount) {
+                alert('Nhập Ít Nhất 150 quyển sách!');
+                return;
+            }
+            for (let i = 1; i < rows.length; i++) {
                 const cells = rows[i].getElementsByTagName('td');
                 const rowData = {
                     title: cells[1].textContent,
@@ -86,7 +107,7 @@
                     author: cells[3].textContent,
                     quantity: parseInt(cells[4].textContent),
                     price: parseFloat(cells[5].textContent),
-                    price_reduced:parseFloat(cells[6].textContent),
+                    price_reduced: parseFloat(cells[6].textContent),
                     image: cells[7].textContent.trim()
                 };
                 data.push(rowData);

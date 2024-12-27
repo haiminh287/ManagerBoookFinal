@@ -2,7 +2,7 @@
     <div class="grid">
         <nav class="header__navbar">
             <ul class="header__navbar-list gird">
-                <li class="header__navbar-item header__navbar-item--has-qr header__navbar-item--separate">
+                <!--<li class="header__navbar-item header__navbar-item--has-qr header__navbar-item--separate">
                     Vào cửa hàng trên ứng dụng Delta
                     <div class="header__qr">
                         <img src="{{ url_for('static', filename='assets/img/qr_code_Shopee.png') }}" alt="Download QR" class="footer__download-qr">
@@ -15,7 +15,7 @@
                             </a>
                         </div>
                     </div>
-                </li>
+                </li>-->
                 <li class="header__navbar-item">
                     <!-- use span individual -->
                     <span class="header__navbar-title--no-pointer">Kết nối</span>
@@ -94,16 +94,16 @@
                 </div>
             -->
             </li>
-                <li class="header__navbar-item"><a href="" class="header__navbar-item-link">
+                <li class="header__navbar-item"><!--<a href="" class="header__navbar-item-link">
                     <i class="header__navbar-icon fa-regular fa-circle-question"></i>Trợ giúp
-                </a>
+                </a>-->
             </li>
             {% if current_user.is_authenticated %}
                 <li class="header__navbar-item header__navbar-user">
                     <img src="https://cdn.pixabay.com/photo/2016/11/18/23/38/child-1837375_1280.png" alt="" class="header__navbar-user-img">
-                    <span class="header__navbar-user-name">{{current_user.username}}</span>
+                    <span class="header__navbar-user-name">{{current_user.name}}</span>
                     <ul class="header__navbar-user-menu">
-                        <li class="header__navbar-user-item"><a href="">Tài khoản của tôi</a></li>
+                        <!--<li class="header__navbar-user-item"><a href="">Tài khoản của tôi</a></li>-->
                         <li class="header__navbar-user-item"><a href="/historyorder">Đơn mua</a></li>
                         <li class="header__navbar-user-item header__navbar-user-item--separate"><a href="/logout">Đăng xuất</a></li>
                     </ul>
@@ -125,7 +125,9 @@
 
             <div class="header__search">
                 <div class="header__search-input-wrap">
+                    
                     <input type="text" id="search-input" class="header__search-input" name="kw" placeholder="Nhập để tìm kiếm sản phẩm">
+                    <!--
                     <div class="header__search-history">
                         <h3 class="header__search-history-heading">Lịch sử tìm kiếm</h3>
                         <ul class="header__search-history-list">
@@ -137,8 +139,9 @@
                             </li>
                         </ul>
                     </div>
-                </div>
-                <div class="header__search-select">
+                    -->
+                </div> 
+                <!--<div class="header__search-select">
                     <span class="header__search-select-label">Trong Shop</span>
                     <i class="header__search-select-icon fa-sharp fa-solid fa-chevron-down"></i>
                     <ul class="header__search-option">
@@ -152,7 +155,7 @@
                         </li>
 
                     </ul>
-                </div>
+                </div>-->
                 <button class="header__search-btn" id="search-btn" type="submit">
                     <i class="header__search-btn-icon fa-solid fa-magnifying-glass"></i>
                 </button>
@@ -168,7 +171,7 @@
                     -->
                      
                     <div class="header__cart-list">
-                        {% if 'cart' in session %}
+                        {% if 'cart' in session and session.cart %}
                         <h4 class="header__cart-heading">Sản phẩm đã thêm</h4>
                         <ul class="header__cart-list-item" id='cart-list'>
                             <!-- Cart Item -->
@@ -220,6 +223,14 @@
                 window.location.href = '/?kw=' + encodeURIComponent(kw);
             }
         });
-
+        document.getElementById('search-input').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Ngăn chặn hành vi mặc định của phím Enter
+                var kw = this.value;
+                if (kw) {
+                    window.location.href = '/?kw=' + encodeURIComponent(kw);
+                }
+            }
+        });
     </script>
 </header>

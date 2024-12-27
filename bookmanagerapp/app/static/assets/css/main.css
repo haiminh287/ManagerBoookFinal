@@ -406,6 +406,9 @@
     color: #f33a58;
 }
 
+.form-floating.invalid .auth-form__message {
+    color: #f33a58;
+}
 .auth-form__label {
     font-weight: 700;
     line-height: 1.8rem;
