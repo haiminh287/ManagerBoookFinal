@@ -247,7 +247,7 @@ class Receipt(BaseModel):
     is_pay = Column(Boolean)
 
 
-class ReceiptDetail(BaseModel):# db.Model
+class ReceiptDetail(BaseModel):
     id = Column(Integer, primary_key=True, autoincrement=True)
     quantity = Column(Integer, default=0)
     price = Column(Float, default=0)

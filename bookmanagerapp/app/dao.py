@@ -642,12 +642,13 @@ def book_sales_frequency(time='month', year=datetime.now().year, month=None):
     
     return stats
 
-def get_book_content_with_receipt_with_user():
+def get_book_content_with_receipt_with_user(user):
     return BookContent.query\
         .join(ReceiptDetail,ReceiptDetail.book_id==BookContent.id)\
         .join(Receipt,Receipt.id==ReceiptDetail.receipt_id)\
         .join(Client,Receipt.client_id==Client.id)\
-        .filter(Client.id==current_user.id)
+        .filter(Client.id==user.id)\
+        .group_by(BookContent.id).all()
 if __name__ == '__main__':
     with app.app_context():
         # print(book_sales_frequency(month =12))

@@ -4,7 +4,7 @@ from flask_admin import expose ,BaseView
 from flask_login import current_user
 from config import app,db,admin
 import dao
-from models import BookContent, CancelOrder,Review,Category, Book,Price,TakedBookDetail,Order,OrderDetail,Client, Regulation, UserRole
+from models import BookContent, CancelOrder, Receipt, ReceiptDetail,Review,Category, Book,Price,TakedBookDetail,Order,OrderDetail,Client, Regulation, UserRole
 import utils
 
 class AdminAuthenticatedModelView(ModelView):
@@ -71,6 +71,8 @@ class CancelOrderView(BaseModelView):
 class ReviewView(BaseModelView):
     column_list = ['id']
 
+class ReceiptView(BaseModelView):
+    column_list = ['id']
 class TakedBookModelView(BaseModelView):
     column_list = ['id','client_id','taked_book_details']
 class TakedBookDetailModelView(BaseModelView):
@@ -127,7 +129,14 @@ admin.add_view(BookContentModelView(BookContent,db.session))
 admin_tag = "Special for Admin"
 order_tag = "Order"
 summon_tag = "Summon"
+class ReceiptModelView(AdminAuthenticatedModelView):
+    column_list=['id','client_id']
 
+
+class ReceiptDetailModelView(AdminAuthenticatedModelView):
+    column_list=['id','receipt_id','quantity','book_id']
+
+admin.add_view(ReceiptDetailModelView(ReceiptDetail,db.session,category="Receipt"))
 admin.add_view(CategoryModelView(Category, db.session))
 admin.add_view(BookModelView(Book, db.session))
 admin.add_view(UserModelView(Client,db.session))
@@ -136,6 +145,7 @@ admin.add_view(CancelOrderView(CancelOrder, db.session,category=order_tag))
 admin.add_view(OrderDetailView(OrderDetail, db.session,category=order_tag))
 admin.add_view(ReviewView(Review, db.session,category=summon_tag))
 admin.add_view(PriceModelView(Price, db.session,category=summon_tag))
+admin.add_view(ReceiptView(Receipt, db.session,category="Receipt"))
 admin.add_view(TakedBookDetailModelView(TakedBookDetail, db.session,category=summon_tag))
 admin.add_view(AboutUsView(name="Nhập Sách"))
 admin.add_view(LogoutView(name="Đăng Xuất"))

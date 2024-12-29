@@ -748,9 +748,13 @@ def process_em_logout():
 
 @app.route("/bookcontents/")
 def load_bookcontent():
-    book_contents = dao.get_book_content_with_receipt_with_user()
-    return jsonify(book_contents)
-
+    book_contents={}
+    if current_user.is_authenticated:
+        book_contents = dao.get_book_content_with_receipt_with_user(current_user)
+        return jsonify(book_contents),200
+    else:
+        return jsonify(book_contents),302
+    
 scheduler = BackgroundScheduler()
 scheduler.add_job(Order.update_order_status, 'interval', hours=1)
 scheduler.start()
