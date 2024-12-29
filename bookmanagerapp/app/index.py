@@ -55,7 +55,6 @@ def book_detail(book_id):
     reviews = dao.get_review_by_book_id(book_id)
     previous_url = request.referrer or '/'
     return render_template('details.html', book=book,reviews=reviews,previous_url=previous_url,has_successfully_ordered_and_can_comment=has_successfully_ordered_and_can_comment)
-    # return render_template('details.html', book=book,previous_url=previous_url,has_successfully_ordered_and_can_comment=has_successfully_ordered_and_can_comment)
 
 
 @app.route("/books/<book_id>/reviews", methods=['POST'])
@@ -86,6 +85,7 @@ def status_review(book_id):
         return jsonify({'status': 'reviewed'})
     return jsonify({'status': 'active'})
 
+
 @app.context_processor
 def common_responses():
     return {
@@ -114,7 +114,7 @@ def api_check_out():
         return jsonify({'status': 'ok'})
     return jsonify({'status': 'empty'})
 
-from sendEmail.sendmail import send_email
+from sendEmail.sendmail import send_email,send_email_android
 @app.route("/orders", methods=['POST'])
 def order_process():
     data = request.form
@@ -206,10 +206,13 @@ def get_order_status(order_id):
         return jsonify({'status': 'confirmed'})
     if state == 'CANCEL':
         return jsonify({'status': 'cancelled'})
-    if state == 'PENDINGCONFIRM' or state == 'PENDINGPROCESSING':
-        return jsonify({'status': 'pending'})
+    if (order_id in order_ids and state == 'PENDINGPROCESSING') or (order_id in order_ids and state == 'PENDINGCONFIRM'):
+        return jsonify({'status': 'requestcancelled__pending'})
     if order_id in order_ids :
         return jsonify({'status': 'requestcancelled'})
+    if state == 'PENDINGCONFIRM' or state == 'PENDINGPROCESSING':
+        return jsonify({'status': 'pending'})
+
     return jsonify({'status': 'active'})
 
 
@@ -226,8 +229,7 @@ def delete_order(order_id):
 def add_book():
     data = request.json
     books_data = data.get('books', [])
-    added_books = []
-
+    added_books = []    
     for book_data in books_data:
         title = book_data.get('title')
         author = book_data.get('author')
@@ -240,7 +242,7 @@ def add_book():
         added_books.append(book)
 
     return jsonify([book.to_dict() for book in added_books])
-# @login.user_loader
+
 @app.route("/historyorder",methods=['GET'])
 @login_required
 def history_order():
@@ -254,9 +256,9 @@ def history_order():
         order_id = data.get('orderInfo').split('#')[1]
         if result_code == '0':
             dao.update_status_payed_order(int(order_id))
-            print("Payment successful")
+            print("Thanh Toán Thành Công")
         else:
-            print("Payment failed")
+            print("Thanh Toán Thất Bại")
     if current_user.is_authenticated:
         orders = dao.load_orders(current_user.id)
         print(orders)
@@ -267,7 +269,7 @@ def history_order():
 def pay_order(order_id):
     order = dao.load_order_by_id(order_id)
     total_price = int(order['total_price'])
-    response = services.get_qr_momo(order_id,total_price,'/historyorder',f'/orders/{order_id}/momo')
+    response = services.get_qr_momo(total_price,'/historyorder',order_id=order_id)
     if response.status_code == 200:
         response_data = response.json()
         pay_url = response_data.get('payUrl')
@@ -279,6 +281,37 @@ def pay_order(order_id):
         return jsonify({'error': 'Failed to connect to MoMo API', 'details': response.text}), 500
     
 
+@app.route("/api/historyorder",methods=['GET'])
+def history_order_android():
+    data = request.args.to_dict()
+    print('data',data)
+    if data:
+        print(f"Redirect data: {data}")
+        result_code = services.ger_respone_momo(data)
+        
+        order_id = data.get('orderInfo').split('#')[1]
+        if result_code == '0':
+            dao.update_status_payed_order(int(order_id))
+            return "<h1>Payment successful</h1>"
+    return "<h1>Payment failed</h1>"
+@app.route("/orders/<order_id>/pay_android",methods=['get'])
+def pay_order_android(order_id):
+    orders = dao.load_order_by_id_android(order_id)
+    total_price=0
+    for order in orders:
+        total_price+=order['price']*order['quantity']
+    total_price = int(total_price)
+    print(total_price)
+    response = services.get_qr_momo(total_price,'/api/historyorder',order_id=order_id)
+    if response.status_code == 200:
+        response_data = response.json()
+        pay_url = response_data.get('deeplink')
+        if pay_url:
+            return jsonify({'momo_deep_link': pay_url})
+        else:
+            return jsonify({'error': 'Pay URL not found in MoMo response'}), 400
+    else:
+        return jsonify({'error': 'Failed to connect to MoMo API', 'details': response.text}), 500
 @app.route("/api/cart", methods=['POST'])
 def add_to_cart():
     data = request.json
@@ -435,6 +468,7 @@ def register_process():
 @app.route('/scan', methods=['POST'])
 def scan():
     book_id = services.scan_barcode()
+    print(book_id)
     if 'cart' not in session:
         session['cart'] = {}
     session['cart'] = dao.load_cart(session['cart'], book_id)
@@ -453,7 +487,6 @@ def get_categories():
     return jsonify([cate.to_dict() for cate in categories])
 
 
-@app.route('/receipts/add')
 
 
 # @app.route('/em/cart', methods=['GET'])
@@ -463,10 +496,11 @@ def get_categories():
 
 @app.route('/receipts/pay', methods=['GET'])
 def pay_taked_book():
-    # taked_book_id = dao.load_taked_books_by_user_id(current_user.id).id
-    cart = session.get('cart', {})
-    total_price = cart.get('total_price')
-    response = services.get_qr_momo(random.randrange(100,10000000),str(total_price),'/em/cart','/admin')
+    cart = utils.count_cart(session['cart'])
+    total_price = cart.get('total_amount')
+    print(total_price)
+    total_price = int(total_price)
+    response = services.get_qr_momo(total_price,'/em/cart')
     print(response)
     if response.status_code == 200:
         response_data = response.json()
@@ -491,12 +525,40 @@ def api_login():
     if user:
         return jsonify({
             'id': user.id,
+            'email': user.email,
             'username': user.username,
             'fullname': user.name,
-            'password': user.password
+            'password': user.password,
+            
         }), 200
 
     return jsonify({'error': 'Invalid credentials'}), 401
+
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    err_msg = None
+    if request.method == 'POST':
+        confirm = request.form.get('password_confirmation')
+        password = request.form.get('password')
+        if password == confirm:
+            data = request.form.copy()
+            print(data)
+            data.pop('password_confirmation', None)
+            if dao.check_user_exist(data.get('username')):
+                err_msg = 'Tên đăng nhập đã tồn tại!'
+                return jsonify({'success': False, 'err_msg': err_msg})
+            elif dao.check_email_exist(data.get('email')):
+                err_msg = 'Email đã tồn tại!'
+                return jsonify({'success': False, 'err_msg': err_msg})
+            elif request.form.get('name') == '' or request.form.get('username') == '' or request.form.get('email') == '' or request.form.get('password') == '' or request.form.get('password_confirmation') == '':
+                err_msg = ''
+            else:
+                dao.add_user(**data)
+                return jsonify({'success': True, 'status': 200})
+        else:
+            err_msg = 'Mật khẩu KHÔNG khớp!'
+    
+    return jsonify({'success': False, 'err_msg': err_msg})
 
 @app.route('/api/user/<int:id>', methods=['GET'])
 def get_user_by_id(id):
@@ -517,14 +579,15 @@ def get_taked_books_by_user_id(user_id):
         book_detail = dao.load_taked_book_detail_by_book_id(detail.book_id)
         if book_detail is None:
             continue
-        book, original_price = book_detail
+        book = book_detail
         print(book)
         if book:
             result.append({
                 'title': book.title,
                 'quantity': detail.quantity,
-                'price': original_price,
-                'id':book.id
+                'price': book.prices[0].price,
+                'id':book.id,
+                'image': book.image
             })
     return jsonify(result), 200
 @app.route("/api/category/", methods=['GET'])
@@ -573,7 +636,11 @@ def update_taked_book_quantity(user_id, book_id):
 @app.route("/api/user/<int:user_id>/orders", methods=['POST'])
 def order_process_android(user_id):
     data = request.form
-    dao.add_orders_android(data,user_id=user_id)
+    order_id = dao.add_orders_android(data,user_id=user_id)
+    print(order_id)
+    order_details = dao.load_orders_by_order_id_android(order_id)
+    send_email_android(order_details, data.get('name'), data.get('phone'), data.get('email'), data.get('address'),order_id)
+    
     return jsonify({'status': 200})
 
 
@@ -605,7 +672,6 @@ def get_regulations():
 
 @app.route("/api/cancel_orders/<int:cancel_order_id>", methods=['PATCH'])
 def update_cancel_order(cancel_order_id):
-    # reason_state = request.json.get('reason_state')
     print(f"cancel_id  : {cancel_order_id}")
     cancel_confirm = dao.confirm_cancel_order(cancel_order_id,CancelReasonState.CLIENTREQUIRED)
     return jsonify(cancel_confirm)
@@ -617,10 +683,47 @@ def update_order(order_id):
     return jsonify(confirmed_order)
 
 
+@app.route("/api/books/<book_id>/reviews", methods=['GET','POST'])
+def add_review_android(book_id):
+    if request.method == 'GET':
+        reviews = dao.get_review_by_book_id(book_id)
+        return jsonify([review.to_dict() for review in reviews])
+    data = request.form
+    content = data.get('content')
+    user_id= data.get('user_id')
+    try:
+        dao.add_review(book_id,content,user_id )
+    except Exception as ex:
+        return jsonify({'status': 500, 'err_msg': str(ex)})
+    else:
+        return jsonify({'status': 200})
+    
+@app.route("/api/users/<user_id>/books/<book_id>/reviews/status", methods=['GET'])
+def status_review_android(user_id,book_id):
+
+    review = dao.get_review_in_review_by_user_id_android(book_id,user_id)
+    if review:
+        return jsonify({'status': 'reviewed'})
+    return jsonify({'status': 'active'})
+
+
+@app.route("/api/orders/<order_id>/status", methods=['GET'])
+def get_order_status_android(order_id):
+    state = dao.load_state_order_by_id(order_id)
+    print('state',state)
+    order_id = int(order_id)
+    if state == 'CONFIRM':
+        return jsonify({'status': 'confirmed'})
+    if state == 'CANCEL':
+        return jsonify({'status': 'cancelled'})
+    return jsonify({'status': 'active'})
 # @app.route("/em/cart")
 # def load_employee_cart():
 #     return render_template('admin/cart.html')
-
+@app.route("/api/orders/<order_id>/update_state_cancel",methods=['GET'])
+def update_state_order_android(order_id):
+    dao.update_status_cancle_order_android(int(order_id))
+    return jsonify({'status': 'success'})
 
 @app.route("/em/login", methods=['POST'])
 def process_em_login():

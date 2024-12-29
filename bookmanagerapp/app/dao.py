@@ -23,7 +23,10 @@ def update_status_payed_order(order_id):
     order = Order.query.get(order_id)
     order.state = StateOrder.CONFIRM.name
     db.session.commit()
-
+def update_status_cancle_order_android(order_id):
+    order = Order.query.get(order_id)
+    order.state = StateOrder.CANCEL.name
+    db.session.commit()
 
 def load_taked_book_detail_by_book_id(book_id):
     return Book.query.filter(Book.id == book_id).first()
@@ -101,9 +104,6 @@ def add_orders_android(data,address=None,user_id=None):
         else:
             existing_entry = InfoUserOrder.query.filter_by(phone=data.get('phone')).first()
         if existing_entry:
-            for key, value in data.items():
-                setattr(existing_entry, key, value)
-            db.session.commit()
             info_user_order = existing_entry
         else:
             info_user_order = InfoUserOrder(
@@ -128,12 +128,17 @@ def add_orders_android(data,address=None,user_id=None):
         for taked_book_detail in taked_book_details:
             db.session.delete(taked_book_detail)
         db.session.commit()
+        return order_id
 
 def load_categories():
     return Category.query.order_by("id").all()
 
+
 def load_taked_books_by_user_id(user_id):
     return TakedBook.query.filter_by(client_id=user_id).first()
+
+def load_orders_by_order_id_android(order_id):
+    return OrderDetail.query.filter(OrderDetail.order_id == order_id).all()
 
 def load_books(cate_id=None,kw=None,page=1,order='desc'):
     query = Book.query
@@ -149,19 +154,20 @@ def load_books(cate_id=None,kw=None,page=1,order='desc'):
         query = query.filter(Price.name_price=='Giá Giảm').order_by(Price.price)
     elif order == 'desc':
         query = query.filter(Price.name_price=='Giá Giảm').order_by(-Price.price)
-    # elif order == 'created_at':
-    #     query = query.order_by(-Book.id)
     page_size = app.config['PAGE_SIZE']
     start = (page - 1) * page_size
     end = start + page_size
     query = query.slice(start,end)
     return query.all()
 
-def add_review(book_id, content,rating):
-    review = Review(book_id=book_id, content=content, rate=rating,client_id =current_user.id)
+def add_review(book_id, content,user_id,rating=5):
+    review = Review(book_id=book_id, content=content, rate=rating,client_id =user_id)
     db.session.add(review)
     db.session.commit()
     return review
+
+def get_review_in_review_by_user_id_android(book_id,user_id):
+    return Review.query.filter(Review.book_id.__eq__(book_id),Review.client_id.__eq__(user_id)).first()
 
 def get_review_by_book_id(book_id):
     return Review.query.filter(Review.book_id.__eq__(book_id)).order_by(-Review.id)
@@ -381,7 +387,6 @@ def load_cart(cart, book_id=None):
     if book_id:
         book = get_book_by_id(book_id)
         print(f"book info: {book}")
-        print(f"book info: {book.prices}")
         if book:
             book_id_str = str(book_id)
             if book_id in cart:
@@ -470,21 +475,6 @@ def delete_book_selected_in_taked_book_detail( selected_items):
         db.session.query(TakedBookDetail).filter_by(taked_book_id=taked_book.id, book_id=item_id).delete()
     db.session.commit()
 
-
-def load_taked_book_detail_by_book_id_main(book_id):
-    original_price_query = Price.query.filter(Price.book_id == book_id, Price.name_price == 'Giá Gốc').first()
-    discount_price_query = Price.query.filter(Price.book_id == book_id, Price.name_price == 'Giá Giảm').first()
-
-    if original_price_query and discount_price_query:
-        original_price = original_price_query.price
-        discount_price = discount_price_query.price
-        final_price = original_price * discount_price
-        return {
-            'book': Book.query.filter(Book.id == book_id).first(),
-            'final_price': final_price
-        }
-    else:
-        return None
 
 def get_taked_books_by_user_id(user_id):
     cart = {}

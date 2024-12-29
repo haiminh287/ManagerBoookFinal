@@ -9,6 +9,8 @@ from datetime import datetime as dt
 from sqlalchemy import text
 from datetime import datetime, timedelta
 import hashlib
+import humanize
+import locale
 
 
 class UserRole(RoleEnum):
@@ -83,6 +85,7 @@ class Client(db.Model, UserMixin):
                 'id': self.id,
                 'fullname': self.name,
                 'username': self.username,
+                'email': self.email,
             }
 
 
@@ -113,6 +116,7 @@ class Book(BaseModel):
     categories = relationship(Category, secondary='category_book', back_populates='books')
     order_details = relationship('OrderDetail', backref='book', lazy=True)
     receipt_details = relationship('ReceiptDetail',backref='book',lazy=True)
+    taked_book_details = relationship('TakedBookDetail', backref='book', lazy=True)
     def to_dict(self):
         return {
             'id': self.id,
@@ -271,6 +275,40 @@ class Review(BaseModel):
     def __str__(self):
         return self.content
     
+    def to_dict(self):
+        now = datetime.now()
+        created_at_relative = humanize.naturaltime(now - self.created_at)
+        translations = {
+            "a second": "1 giây",
+            "a minute": "1 phút",
+            "an hour": "1 giờ",
+            "a day": "1 ngày",
+            "a month": "1 tháng",
+            "a year": "1 năm",
+            " ago": " trước",
+            " seconds": " giây",
+            " second": " giây",
+            " minutes": " phút",
+            " minute": " phút",
+            " hours": " giờ",
+            " hour": " giờ",
+            " days": " ngày",
+            " day": " ngày",
+            " months": " tháng",
+            " month": " tháng",
+            " years": " năm",
+            " year": " năm",
+ 
+        }
+        
+        for eng, viet in translations.items():
+            created_at_relative = created_at_relative.replace(eng, viet)
+        return {
+            'id': self.id,
+            'name': self.client.name,
+            'content': self.content,
+            'created_at': created_at_relative,
+        }
 class CancelOrder(BaseModel):
     __tablename__ = 'cancel_orders'
     id = Column(Integer, primary_key=True, autoincrement=True)

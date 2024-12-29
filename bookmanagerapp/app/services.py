@@ -5,6 +5,7 @@ import requests
 import hmac
 import json
 import hashlib
+from flask_login import current_user
 def scan_barcode():
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
@@ -30,14 +31,18 @@ def scan_barcode():
     cv2.destroyAllWindows()
     return "Đã quét mã vạch thành công."
 
-def get_qr_momo(order_id, amount, redriectUrl,ipUrl):
+def get_qr_momo( amount, redriectUrl,ipUrl="",order_id =None):
         # Cấu hình API MoMo
         endpoint = "https://test-payment.momo.vn/v2/gateway/api/create"
         partnerCode = "MOMO"
         accessKey = "F8BBA842ECF85"
         secretKey = "K951B6PE1waDMi640xX08PD3vg6EkVlz"
-        orderInfo = f"Mã đơn hàng: #{str(order_id)}"
-        redirectUrl = f"http://127.0.0.1:5000{redriectUrl}"
+        # orderInfo=f'Thanh Toán Đơn Hàng bởi nhân viên {current_user.id} '
+        orderInfo=f'Thanh Toán'
+        if order_id:
+            orderInfo = f"Mã đơn hàng: #{str(order_id)}"
+        # redirectUrl = f"http://127.0.0.1:5000{redriectUrl}"
+        redirectUrl = f"https://6bbf-2405-4802-811a-c990-7876-31-cdfc-518c.ngrok-free.app{redriectUrl}"
         ipnUrl = f"http://127.0.0.1:5000{ipUrl}"
         amount = str(amount)
         orderId = str(uuid.uuid4())
