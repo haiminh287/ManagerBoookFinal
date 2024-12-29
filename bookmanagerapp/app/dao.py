@@ -1,5 +1,5 @@
 import json
-from models import CategoryBook,TakedBook,TakedBookDetail,Category, Book,Client,Order,InfoUserOrder,OrderDetail,Price,Review,CategoryBook,CancelOrder,Receipt,ReceiptDetail, CancelReasonState, MethodBank, Regulation, StateOrder
+from models import BookContent, CategoryBook,TakedBook,TakedBookDetail,Category, Book,Client,Order,InfoUserOrder,OrderDetail,Price,Review,CategoryBook,CancelOrder,Receipt,ReceiptDetail, CancelReasonState, MethodBank, Regulation, StateOrder
 from config import login,db,app
 import hashlib
 from flask_login import current_user
@@ -642,7 +642,12 @@ def book_sales_frequency(time='month', year=datetime.now().year, month=None):
     
     return stats
 
-
+def get_book_content_with_receipt_with_user():
+    return BookContent.query\
+        .join(ReceiptDetail,ReceiptDetail.book_id==BookContent.id)\
+        .join(Receipt,Receipt.id==ReceiptDetail.receipt_id)\
+        .join(Client,Receipt.client_id==Client.id)\
+        .filter(Client.id==current_user.id)
 if __name__ == '__main__':
     with app.app_context():
         # print(book_sales_frequency(month =12))

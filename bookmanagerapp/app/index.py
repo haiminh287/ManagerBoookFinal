@@ -746,6 +746,10 @@ def process_em_logout():
     logout_user()
     return redirect('/em/index')
 
+@app.route("/bookcontents/")
+def load_bookcontent():
+    book_contents = dao.get_book_content_with_receipt_with_user()
+    return jsonify(book_contents)
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(Order.update_order_status, 'interval', hours=1)

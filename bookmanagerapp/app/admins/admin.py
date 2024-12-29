@@ -4,7 +4,7 @@ from flask_admin import expose ,BaseView
 from flask_login import current_user
 from config import app,db,admin
 import dao
-from models import CancelOrder,Review,Category, Book,Price,TakedBookDetail,Order,OrderDetail,Client, Regulation, UserRole
+from models import BookContent, CancelOrder,Review,Category, Book,Price,TakedBookDetail,Order,OrderDetail,Client, Regulation, UserRole
 import utils
 
 class AdminAuthenticatedModelView(ModelView):
@@ -119,6 +119,11 @@ class RegulationModelView(AdminAuthenticatedModelView):
     can_create=False
     can_delete=False
 
+class BookContentModelView(AdminAuthenticatedModelView):
+    column_list=['id', 'title', 'url_content']
+    column_editable_list = ['url_content']
+
+admin.add_view(BookContentModelView(BookContent,db.session))
 admin_tag = "Special for Admin"
 order_tag = "Order"
 summon_tag = "Summon"

@@ -328,7 +328,8 @@ class Regulation(BaseModel):
     name = Column(String(50),nullable=False , unique=True)
     value = Column(Integer,nullable=False)
 
-
+class BookContent(Book):
+    url_content = Column(String(255),default="https://globalforgivenessinitiative.com/user/pages/download/Four-Steps-to-Forgiveness-William-Fergus-Martin.pdf")
 
 if __name__ == '__main__':
     with app.app_context():
