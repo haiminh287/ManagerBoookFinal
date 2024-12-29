@@ -32,6 +32,7 @@ def load_taked_book_detail_by_book_id(book_id):
     return Book.query.filter(Book.id == book_id).first()
 
 def add_taked_book_android(book_id,user_id):
+        price_book =Book.query.filter(Book.id == book_id).first().prices[0].price
         taked_book = db.session.query(TakedBook).filter_by(client_id=user_id).first()
         if not taked_book:
             taked_book = TakedBook(client_id=user_id)
@@ -42,7 +43,7 @@ def add_taked_book_android(book_id,user_id):
         if taked_book_detail:
             taked_book_detail.quantity += 1
         else:
-            taked_book_detail = TakedBookDetail(taked_book_id=taked_book.id, book_id=book_id, quantity=1)
+            taked_book_detail = TakedBookDetail(taked_book_id=taked_book.id, book_id=book_id, quantity=1,price=price_book)
             db.session.add(taked_book_detail)
         
         try:
@@ -121,8 +122,10 @@ def add_orders_android(data,address=None,user_id=None):
         order_id = order.id
         taked_book = TakedBook.query.filter_by(client_id=user_id).first()
         taked_book_details=TakedBookDetail.query.filter_by(taked_book_id=taked_book.id).all()
+        
         for taked_book_detail in taked_book_details:
-            order_detail = OrderDetail(order_id=order_id, book_id=taked_book_detail.book_id, quantity=taked_book_detail.quantity)
+            print('price',taked_book_detail.price)
+            order_detail = OrderDetail(order_id=order_id, book_id=taked_book_detail.book_id, quantity=taked_book_detail.quantity,price = taked_book_detail.price)
             db.session.add(order_detail)
         db.session.commit()
         for taked_book_detail in taked_book_details:
